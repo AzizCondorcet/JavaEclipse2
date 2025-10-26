@@ -1,5 +1,6 @@
 package be.ouagueni.connection;
 
+import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
 import java.sql.SQLException;
@@ -12,7 +13,8 @@ public class ClubConnection {
         try {
             Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
 
-            String url = "jdbc:ucanaccess://C:/dev/java/project/ProjectJava/ProjectJava/BD-Project.accdb";
+            String dbPath = System.getProperty("user.dir") + File.separator + "BD-Project.accdb";
+            String url = "jdbc:ucanaccess://" + dbPath;
 
             snglConnection = DriverManager.getConnection(url);
 

@@ -7,17 +7,17 @@ import java.util.Set;
 public class Category implements Serializable {
 
 	private static final long serialVersionUID = 5610587733056598846L;
-    private String nomCategorie;
+    private TypeCat type;
     private Manager manager;
     private Set<Member> Members = new HashSet<>();
     private Calendar calendar;
 
     public Category() {}
-    public Category(String nomCategorie, Manager manager,Calendar calendar) 
-    { this.nomCategorie = nomCategorie; this.manager = manager; this.calendar=calendar; }
+    public Category(TypeCat nomCategorie, Manager manager,Calendar calendar) 
+    { this.type = nomCategorie; this.manager = manager; this.calendar=calendar; }
 
-    public String getNomCategorie() { return nomCategorie; }
-    public void setNomCategorie(String nomCategorie) { this.nomCategorie = nomCategorie; }
+    public TypeCat getNomCategorie() { return type; }
+    public void setNomCategorie(TypeCat nomCategorie) { this.type = nomCategorie; }
     public Manager getManager() { return manager; }
     public void setManager(Manager manager) { this.manager = manager; }
     public Set<Member> getMembers() { return Members; }
@@ -29,7 +29,7 @@ public class Category implements Serializable {
 
     @Override
     public String toString() {
-		return "Category[nomCategorie=" + nomCategorie + ", manager=" + manager + "]";
+		return "Category[nomCategorie=" + type + ", manager=" + manager + "]";
 	}
 }
 

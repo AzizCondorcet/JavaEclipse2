@@ -6,6 +6,7 @@ import java.util.Set;
 
 public class Bike implements Serializable {
 	private static final long serialVersionUID = -4193360624407477516L;
+	private int id;
     private double weight;
     private String type;
     private double length;
@@ -14,14 +15,17 @@ public class Bike implements Serializable {
     private Set<Inscription> inscriptions = new HashSet<>();
 
     public Bike() {}
-    public Bike (double weight, String type, double length, Member owner) {
+    public Bike (int id,double weight, String type, double length, Member owner) {
         this.weight = weight;
         this.type = type;
         this.length = length;
         this.owner = owner;
+        this.id=id;
     }
 
 
+    public double getid() { return id; }
+    public void setid(int id) { this.id = id; }
     public double getWeight() { return weight; }
     public void setWeight(double weight) { this.weight = weight; }
     public String getType() { return type; }

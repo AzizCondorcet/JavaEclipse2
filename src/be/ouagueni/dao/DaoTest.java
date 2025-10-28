@@ -14,14 +14,14 @@ public class DaoTest {
         try (Connection conn = ClubConnection.getInstance();
              Statement stmt = conn.createStatement()) {
 
-            String sql = "SELECT * FROM Exemple";
+            String sql = "SELECT * FROM Calendar";
             ResultSet rs = stmt.executeQuery(sql);
 
             while (rs.next()) {
-                int numero = rs.getInt("N°");  
-                String champ1 = rs.getString("Champ1");
+                int numero = rs.getInt("idCalendar");  
+                int numero2 = rs.getInt("idCategory");  
 
-                System.out.println(numero + " - " + champ1);
+                System.out.println(numero + " - " + numero2);
             }
 
             rs.close();

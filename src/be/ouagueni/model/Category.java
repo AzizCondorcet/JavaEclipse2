@@ -8,14 +8,18 @@ public class Category implements Serializable {
 
 	private static final long serialVersionUID = 5610587733056598846L;
     private TypeCat type;
+	private int id;
     private Manager manager;
     private Set<Member> Members = new HashSet<>();
     private Calendar calendar;
 
     public Category() {}
-    public Category(TypeCat nomCategorie, Manager manager,Calendar calendar) 
-    { this.type = nomCategorie; this.manager = manager; this.calendar=calendar; }
+    public Category(	int id,TypeCat nomCategorie, Manager manager,Calendar calendar) 
+    { this.type = nomCategorie; this.manager = manager; this.calendar=calendar;
+    this.id = id;}
 
+    public double getid() { return id; }
+    public void setid(int id) { this.id = id; }
     public TypeCat getNomCategorie() { return type; }
     public void setNomCategorie(TypeCat nomCategorie) { this.type = nomCategorie; }
     public Manager getManager() { return manager; }

@@ -2,6 +2,9 @@ package be.ouagueni.dao;
 
 import java.sql.Connection;
 
+import be.ouagueni.model.Manager;
+import be.ouagueni.model.TypeCat;
+
 public abstract class DAO<T> {
     protected Connection connect = null;
 
@@ -14,5 +17,7 @@ public abstract class DAO<T> {
     public abstract boolean delete(T obj);
     public abstract boolean update(T obj);
     public abstract T find(int id);
+
+
 }
 

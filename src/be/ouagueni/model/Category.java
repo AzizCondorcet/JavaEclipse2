@@ -7,8 +7,8 @@ import java.util.Set;
 public class Category implements Serializable {
 
 	private static final long serialVersionUID = 5610587733056598846L;
-    private TypeCat type;
 	private int id;
+    private TypeCat type;
     private Manager manager;
     private Set<Member> Members = new HashSet<>();
     private Calendar calendar;
@@ -18,7 +18,7 @@ public class Category implements Serializable {
     { this.type = nomCategorie; this.manager = manager; this.calendar=calendar;
     this.id = id;}
 
-    public double getid() { return id; }
+    public int getid() { return id; }
     public void setid(int id) { this.id = id; }
     public TypeCat getNomCategorie() { return type; }
     public void setNomCategorie(TypeCat nomCategorie) { this.type = nomCategorie; }

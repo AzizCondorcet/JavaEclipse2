@@ -11,11 +11,13 @@ public class Calendar implements Serializable {
     private Set<Ride> rides = new HashSet<>();
     private Category category;
 
-    public Calendar(	int id,Category category) { this.category = category; 
-    this.id = id;}
+    public Calendar() {}
+    public Calendar(Category category) {
+        this.category = category;
+    }
 
     
-    public double getid() { return id; }
+    public int getid() { return id; }
     public void setid(int id) { this.id = id; }
     public Set<Ride> getRides() { return rides; }
     public void setRides(Set<Ride> rides) { this.rides = rides; }

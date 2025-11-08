@@ -2,6 +2,9 @@ package be.ouagueni.model;
 
 
 import java.io.Serializable;
+import java.sql.Connection;
+
+import be.ouagueni.dao.PersonDAO;
 
 public abstract class Person implements Serializable {
 
@@ -17,7 +20,6 @@ public abstract class Person implements Serializable {
     {
         this.id = id; this.name = name; this.firstname = firstname; this.tel = tel; this.password = password;
     }
-
     public int getId() { return id; }
     public void setId(int id) { this.id = id; }
     public String getName() { return name; }
@@ -32,6 +34,11 @@ public abstract class Person implements Serializable {
     @Override
     public String toString() {
         return "Person[id=" + id + ", name=" + name + ", firstname=" + firstname + "]";
+    }
+
+    public static Person login(String name, String password,Connection conn) {
+        PersonDAO dao = new PersonDAO(conn);
+        return dao.findByNameAndPassword(name,password);
     }
 }
 

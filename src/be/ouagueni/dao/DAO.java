@@ -2,8 +2,6 @@ package be.ouagueni.dao;
 
 import java.sql.Connection;
 
-import be.ouagueni.model.Manager;
-import be.ouagueni.model.TypeCat;
 
 public abstract class DAO<T> {
     protected Connection connect = null;

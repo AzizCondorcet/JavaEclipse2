@@ -1,8 +1,11 @@
 package be.ouagueni.model;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.util.HashSet;
 import java.util.Set;
+
+import be.ouagueni.dao.CategoryDAO;
 
 public class Category implements Serializable {
 
@@ -35,5 +38,10 @@ public class Category implements Serializable {
     public String toString() {
 		return "Category[nomCategorie=" + type + ", manager=" + manager + "]";
 	}
+    public boolean updateCategory(Category ca,Connection conn) 
+    {
+    		CategoryDAO dao = new CategoryDAO(conn);
+    		return dao.update(ca);
+    }
 }
 

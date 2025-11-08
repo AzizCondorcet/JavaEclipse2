@@ -15,6 +15,9 @@ public class Member extends Person implements Serializable {
     private Set<Vehicle> passengers = new HashSet<>(); 
 
     public Member() { super(); }
+    public Member(String name, String firstname) {
+        super(0, name, null, null, firstname);
+    }
     public Member(int id, String name, String firstname, String tel, String password,
             Category category, Bike bike) {
 	  super(id, name, firstname, tel, password);

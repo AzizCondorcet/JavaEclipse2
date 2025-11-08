@@ -1,9 +1,12 @@
 package be.ouagueni.model;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
+
+import be.ouagueni.dao.RideDAO;
 
 public class Ride implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -63,6 +66,17 @@ public class Ride implements Serializable {
                 ", totalInscriptions=" + (inscriptions != null ? inscriptions.size() : 0) +
                 ", totalVehicles=" + (vehicles != null ? vehicles.size() : 0) +
                 '}';
+    }
+
+    public boolean createRide(Ride ride,Connection conn) 
+    {
+    		RideDAO dao = new RideDAO(conn);
+    		return dao.create(ride);
+    }
+    public static Set<Ride> allRides(Connection conn) 
+    {
+    		RideDAO dao = new RideDAO(conn);
+    		return dao.getAllRides();
     }
 }
 

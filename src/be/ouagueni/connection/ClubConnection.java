@@ -14,7 +14,7 @@ public class ClubConnection {
         try {
             Class.forName("net.ucanaccess.jdbc.UcanaccessDriver");
 
-            String dbPath = System.getProperty("user.dir") + File.separator + "BD-Proj-2003.mdb";
+            String dbPath = System.getProperty("user.dir") + File.separator + "BD-Proj-2003.accdb";
             String url = "jdbc:ucanaccess://" + dbPath;
 
             snglConnection = DriverManager.getConnection(url);

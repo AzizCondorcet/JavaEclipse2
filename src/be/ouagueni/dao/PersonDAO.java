@@ -10,7 +10,7 @@ import java.util.Set;
 import be.ouagueni.model.Member;
 import be.ouagueni.model.Person;
 import be.ouagueni.model.Ride;
-import be.ouagueni.model.Tresurer;
+import be.ouagueni.model.Treasurer;
 import be.ouagueni.model.TypeCat;
 import be.ouagueni.model.Bike;
 import be.ouagueni.model.Calendar;
@@ -310,7 +310,7 @@ public class PersonDAO extends DAO<Person> {
 	        ResultSet rsTresurer = psTresurer.executeQuery();
 
 	        if (rsTresurer.next()) {
-	            Tresurer tresurer = new Tresurer(personId, name, firstname, tel, psw);
+	            Treasurer tresurer = new Treasurer(personId, name, firstname, tel, psw);
 	            
 	            rsTresurer.close();
 	            psTresurer.close();

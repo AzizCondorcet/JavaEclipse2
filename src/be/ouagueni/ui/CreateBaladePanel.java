@@ -2,7 +2,6 @@ package be.ouagueni.ui;
 
 import javax.swing.*;
 import java.awt.*;
-import java.sql.Connection;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -18,13 +17,11 @@ public class CreateBaladePanel extends JPanel {
     private JLabel lblCategoryManager;
     private JButton btnCreer, btnAnnuler;
 
-    private final Connection conn;
     private final ClubFrame parentFrame;
     private final Manager manager;
     private final Category managerCategory;
 
     public CreateBaladePanel(ClubFrame parentFrame, Manager manager) {
-        this.conn = AppModel.getInstance().getConnection();
         this.parentFrame = parentFrame;
         this.manager = manager;
         this.managerCategory = manager.getCategory();
@@ -52,7 +49,7 @@ public class CreateBaladePanel extends JPanel {
         btnCreer.addActionListener(e -> creerBalade());
         btnAnnuler.addActionListener(e -> {
             reinitialiserChamps();
-            if (parentFrame != null) parentFrame.showManagerDashboard();
+            if (parentFrame != null) parentFrame.showManagerDashboard(manager);
         });
     }
 
@@ -158,7 +155,7 @@ public class CreateBaladePanel extends JPanel {
             Calendar calendar = category.getCalendar();
             if (calendar == null) {
                 calendar = new Calendar(category);
-                calendar.createCalendar(calendar, conn);
+                calendar.createCalendar(calendar, AppModel.getInstance().getConnection());
                 category.setCalendar(calendar);
             }
 
@@ -170,13 +167,13 @@ public class CreateBaladePanel extends JPanel {
 
             // Création du ride
             Ride ride = new Ride(nbPlaces, txtLieuDepart.getText().trim(), dateTimeDepart, prix, calendar);
-            boolean created = ride.createRide(ride, conn);
+            boolean created = ride.createRide(ride, AppModel.getInstance().getConnection());
 
             if (created) {
                 calendar.addRide(ride);
                 JOptionPane.showMessageDialog(this, "✅ Balade créée avec succès !");
                 reinitialiserChamps();
-                if (parentFrame != null) parentFrame.showManagerDashboard();
+                if (parentFrame != null) parentFrame.showManagerDashboard(manager);
             } else {
                 JOptionPane.showMessageDialog(this, "Erreur lors de la création de la balade.", "Erreur", JOptionPane.ERROR_MESSAGE);
             }

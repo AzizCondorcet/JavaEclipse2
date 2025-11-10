@@ -1,8 +1,11 @@
 package be.ouagueni.model;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.util.HashSet;
 import java.util.Set;
+
+import be.ouagueni.dao.VehicleDAO;
 
 public class Vehicle implements Serializable {
     private static final long serialVersionUID = 6135289786991520925L;
@@ -43,7 +46,14 @@ public class Vehicle implements Serializable {
         this.rides.add(ride);
     }
 
-    public int getId() { 
+    public Vehicle(int seatNumber2, int bikeSpotNumber2, Member member)
+    {
+    		seatNumber = seatNumber2;
+    		bikeSpotNumber = bikeSpotNumber2;
+    		driver = member;
+	}
+
+	public int getId() { 
         return id; 
     }
     
@@ -146,6 +156,10 @@ public class Vehicle implements Serializable {
             throw new IllegalStateException("Un véhicule doit avoir au moins 1 ride");
         }
         rides.remove(ride); 
+    }
+    public boolean create(Connection conn) {
+        VehicleDAO dao = new VehicleDAO(conn);
+        return dao.create(this);
     }
     
 }

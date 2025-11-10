@@ -1,6 +1,7 @@
 package be.ouagueni.model;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -81,4 +82,21 @@ public class Member extends Person implements Serializable {
     // méthodes métier de ton diagramme
     public double calculateBalance() { return balance; /* TODO: calcul réel */ }
     public boolean checkBalance() { return balance >= 0; }
+    
+    // Member.java
+	public void postAvailability(Ride ride, int seatNumber, int bikeSpotNumber, Connection connexion) {
+	    for (Vehicle v : ride.getVehicles()) {
+	        if (v.getDriver() != null && v.getDriver().equals(this)) {
+	            throw new IllegalStateException("Vous avez déjà posté une voiture pour cette sortie.");
+	        }
+	    }
+	    Vehicle vehicle = new Vehicle(seatNumber, bikeSpotNumber, this);
+	    vehicle.addRide(ride);
+	
+	    ride.addVehicle(vehicle);
+
+	    if (!vehicle.create(connexion)) {
+	        throw new RuntimeException("Échec de l'enregistrement du véhicule");
+	    }
+	}
 }

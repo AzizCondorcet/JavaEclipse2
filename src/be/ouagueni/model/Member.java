@@ -5,6 +5,9 @@ import java.sql.Connection;
 import java.util.HashSet;
 import java.util.Set;
 
+import be.ouagueni.dao.MemberDAO;
+import be.ouagueni.dao.RideDAO;
+
 public class Member extends Person implements Serializable {
 
 	private static final long serialVersionUID = -25458080844517046L;
@@ -99,4 +102,9 @@ public class Member extends Person implements Serializable {
 	        throw new RuntimeException("Échec de l'enregistrement du véhicule");
 	    }
 	}
+    public boolean create(Connection conn) 
+    {
+    		MemberDAO dao = new MemberDAO(conn);
+    		return dao.create(this);
+    }
 }

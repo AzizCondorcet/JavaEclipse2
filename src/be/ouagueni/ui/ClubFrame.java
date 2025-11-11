@@ -30,8 +30,8 @@ public class ClubFrame extends JFrame {
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // Panneaux généraux
         mainPanel.add(new LoginPanel(this, conn), "login");
+        mainPanel.add(new RegisterPanel(this, conn), "register"); 
 
         add(mainPanel);
         showPanel("login");

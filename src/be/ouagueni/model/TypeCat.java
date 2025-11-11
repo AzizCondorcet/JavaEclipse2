@@ -17,13 +17,16 @@ public enum TypeCat {
         return id;
     }
 
+    // Conversion int -> TypeCat
     public static TypeCat fromId(int id) {
         for (TypeCat type : values()) {
-            if (type.getId() == id) {
-                return type;
-            }
+            if (type.getId() == id) return type;
         }
-        return null;
+        return null; // ou throw new IllegalArgumentException("Type inconnu: " + id);
+    }
+
+    // Conversion TypeCat -> int (pour DAO)
+    public int toInt() {
+        return this.id;
     }
 }
-

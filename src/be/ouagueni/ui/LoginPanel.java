@@ -12,7 +12,7 @@ public class LoginPanel extends JPanel {
     private final Connection conn;
     private JTextField txtEmail;
     private JPasswordField txtPassword;
-    private JButton btnLogin, btnQuit;
+    private JButton btnLogin, btnQuit, btnRegister;
 
     public LoginPanel(ClubFrame parentFrame, Connection conn) {
         this.parentFrame = parentFrame;
@@ -34,7 +34,7 @@ public class LoginPanel extends JPanel {
 
         gbc.gridwidth = 1;
         gbc.gridy++;
-        add(new JLabel("Name :"), gbc);
+        add(new JLabel("Nom d'utilisateur :"), gbc);
         txtEmail = new JTextField(20);
         gbc.gridx = 1;
         add(txtEmail, gbc);
@@ -45,6 +45,7 @@ public class LoginPanel extends JPanel {
         gbc.gridx = 1;
         add(txtPassword, gbc);
 
+        // Boutons de connexion et quitter
         gbc.gridx = 0; gbc.gridy++;
         btnLogin = new JButton("Se connecter");
         add(btnLogin, gbc);
@@ -53,39 +54,46 @@ public class LoginPanel extends JPanel {
         btnQuit = new JButton("Quitter");
         add(btnQuit, gbc);
 
+        // 🔹 Nouveau bouton pour aller à la création de compte
+        gbc.gridx = 0; gbc.gridy++;
+        gbc.gridwidth = 2;
+        btnRegister = new JButton("Créer un compte");
+        add(btnRegister, gbc);
+
+        // Actions
         btnLogin.addActionListener(this::handleLogin);
         btnQuit.addActionListener(e -> System.exit(0));
+        btnRegister.addActionListener(e -> parentFrame.showPanel("register"));
     }
 
     /** Gère la tentative de connexion */
     private void handleLogin(ActionEvent e) {
-    String name = txtEmail.getText().trim();
-    String password = new String(txtPassword.getPassword());
+        String name = txtEmail.getText().trim();
+        String password = new String(txtPassword.getPassword());
 
-    if (name.isEmpty() || password.isEmpty()) {
-        JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.");
-        return;
+        if (name.isEmpty() || password.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Veuillez remplir tous les champs.");
+            return;
+        }
+
+        Person user = Person.login(name, password, conn); 
+
+        if (user == null) {
+            JOptionPane.showMessageDialog(this, "Identifiants incorrects !");
+            return;
+        }
+
+        parentFrame.setCurrentUser(user);
+
+        // Crée dynamiquement le dashboard selon le type
+        if (user instanceof Member member) {
+            parentFrame.showMemberDashboard(member);
+        } else if (user instanceof Manager manager) {
+            parentFrame.showManagerDashboard(manager);
+        } else if (user instanceof Treasurer treasurer) {
+            parentFrame.showTreasurerDashboard(treasurer);
+        } else {
+            JOptionPane.showMessageDialog(this, "Type d'utilisateur inconnu !");
+        }
     }
-
-    Person user = Person.login(name, password, conn); 
-
-    if (user == null) {
-        JOptionPane.showMessageDialog(this, "Identifiants incorrects !");
-        return;
-    }
-
-    parentFrame.setCurrentUser(user);
-
-    // Crée dynamiquement le dashboard selon le type
-    if (user instanceof Member member) {
-        parentFrame.showMemberDashboard(member);
-    } else if (user instanceof Manager manager) {
-        parentFrame.showManagerDashboard(manager);
-    } else if (user instanceof Treasurer treasurer) {
-        parentFrame.showTreasurerDashboard(treasurer);
-    } else {
-        JOptionPane.showMessageDialog(this, "Type d'utilisateur inconnu !");
-    }
-}
-
 }

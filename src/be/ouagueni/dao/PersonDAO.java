@@ -146,10 +146,13 @@ public class PersonDAO extends DAO<Person> {
 
 	                // Bike
 	                if (rsInscriptions.getBoolean("bike") && rsInscriptions.getObject("bike_idBike") != null) {
+	                    int typeId2 = rsInscriptions.getInt("bike_type"); // Maintenant c'est un int en BDD
+	                    TypeCat typeCat2 = TypeCat.fromId(typeId2);
+
 	                    Bike bike = new Bike(
 	                        rsInscriptions.getInt("bike_idBike"),
 	                        rsInscriptions.getDouble("bike_weight"),
-	                        rsInscriptions.getString("bike_type"),
+	                        typeCat2,
 	                        rsInscriptions.getDouble("bike_length"),
 	                        member
 	                    );
@@ -271,15 +274,19 @@ public class PersonDAO extends DAO<Person> {
 	                                ins.setMember(memberIns);
 
 	                                if (rsIns.getBoolean("bike") && rsIns.getObject("idBike") != null) {
+	                                    int typeId3 = rsIns.getInt("bikeType"); // type stocké en int dans la BDD
+	                                    TypeCat typeCat3 = TypeCat.fromId(typeId3); // convertir en TypeCat
+
 	                                    Bike bike = new Bike(
 	                                        rsIns.getInt("idBike"),
 	                                        rsIns.getDouble("weight"),
-	                                        rsIns.getString("bikeType"),
+	                                        typeCat3,
 	                                        rsIns.getDouble("length"),
 	                                        memberIns
 	                                    );
 	                                    ins.setBikeObj(bike);
 	                                }
+
 
 	                                rideInscriptions.add(ins);
 	                            }

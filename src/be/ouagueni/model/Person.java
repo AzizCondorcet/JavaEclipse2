@@ -62,6 +62,6 @@ public abstract class Person implements Serializable {
     
     public static Person login(String name, String password,Connection conn) {
         PersonDAO dao = new PersonDAO(conn);
-        return dao.findByNameAndPassword(name,password);
+        return dao.find(name,password);
     }
 }

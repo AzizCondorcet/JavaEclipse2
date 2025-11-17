@@ -2,6 +2,7 @@ package be.ouagueni.model;
 
 import java.io.Serializable;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -161,5 +162,6 @@ public class Vehicle implements Serializable {
         VehicleDAO dao = new VehicleDAO(conn);
         return dao.create(this);
     }
+  
     
 }

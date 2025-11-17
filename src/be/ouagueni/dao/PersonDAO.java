@@ -42,20 +42,20 @@ public class PersonDAO extends DAO<Person> {
 	public Person find(int id) {
 		return null;
 	}
-	
-	public Person findByNameAndPassword(String name, String password) {
+
+	public Person find(String name, String password) {
 	    try {
-	        // 1️⃣ Récupérer la personne de base
 	        String sqlPerson = "SELECT * FROM Person WHERE namesPers = ? AND psw = ?";
 	        PreparedStatement psPerson = this.connect.prepareStatement(sqlPerson);
 	        psPerson.setString(1, name);
 	        psPerson.setString(2, password);
 	        ResultSet rsPerson = psPerson.executeQuery();
 
-	        if (!rsPerson.next()) {
+	        if (!rsPerson.next()) 
+	        {
 	            rsPerson.close();
 	            psPerson.close();
-	            return null; // personne non trouvée
+	            return null; 
 	        }
 
 	        int personId = rsPerson.getInt("id");
@@ -81,6 +81,7 @@ public class PersonDAO extends DAO<Person> {
 	            member.setPassword(psw);
 	            member.setBalance(rsMember.getDouble("balance"));
 	            int idMember = rsMember.getInt("idMember");
+	            member.setIdMember(idMember);
 
 	            rsMember.close();
 	            psMember.close();

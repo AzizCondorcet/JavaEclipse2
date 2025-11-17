@@ -2,16 +2,19 @@ package be.ouagueni.model;
 
 import java.io.Serializable;
 import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
 import be.ouagueni.dao.MemberDAO;
 import be.ouagueni.dao.RideDAO;
+import be.ouagueni.dao.VehicleDAO;
 
 public class Member extends Person implements Serializable {
 
 	private static final long serialVersionUID = -25458080844517046L;
 	private double balance;
+	private int idMember;
     private Set<Inscription> inscriptions = new HashSet<>();
     private Set<Category> categories = new HashSet<>(); 
     private Set<Bike> bikes = new HashSet<>(); 
@@ -34,7 +37,8 @@ public class Member extends Person implements Serializable {
 
     public double getBalance() { return balance; }
     public void setBalance(double balance) { this.balance = balance; }
-
+	public int getIdMember() { return idMember; }
+	public void setIdMember(int idMember) { this.idMember = idMember; }
     public Set<Inscription> getInscriptions() { return inscriptions; }
     public void setInscriptions(Set<Inscription> inscriptions) { this.inscriptions = inscriptions; }
     public void addInscription(Inscription ins) { if (ins != null) this.inscriptions.add(ins); }
@@ -82,29 +86,66 @@ public class Member extends Person implements Serializable {
     
     public boolean isPassengerIn(Vehicle vehicle) {return this.passengers.contains(vehicle);}
 
-    // méthodes métier de ton diagramme
-    public double calculateBalance() { return balance; /* TODO: calcul réel */ }
-    public boolean checkBalance() { return balance >= 0; }
+    public double calculateBalance() {  
+        int inscriptionCount = this.inscriptions != null ? this.inscriptions.size() : 0;
+        return 20.0 + 5.0 * inscriptionCount;
+    }
     
-    // Member.java
-	public void postAvailability(Ride ride, int seatNumber, int bikeSpotNumber, Connection connexion) {
-	    for (Vehicle v : ride.getVehicles()) {
-	        if (v.getDriver() != null && v.getDriver().equals(this)) {
-	            throw new IllegalStateException("Vous avez déjà posté une voiture pour cette sortie.");
-	        }
-	    }
-	    Vehicle vehicle = new Vehicle(seatNumber, bikeSpotNumber, this);
-	    vehicle.addRide(ride);
-	
-	    ride.addVehicle(vehicle);
+    public boolean checkBalance() {
+        return this.balance <= 0.0;
+    }
+    
+    public void postAvailability(Ride ride, int seatNumber, int bikeSpotNumber, Connection conn) throws SQLException, IllegalStateException { 
+        // Vérifier via les objets (ou SQL si besoin) 
+        if (ride.getVehicles().stream()
+                .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(this))) { 
+            throw new IllegalStateException("Vous avez déjà posté votre voiture pour cette sortie."); 
+        } 
+        if (seatNumber <= 0 && bikeSpotNumber <= 0) { 
+            throw new IllegalArgumentException("Proposez au moins une place."); 
+        } 
+        // Réutiliser ou créer le véhicule 
+        Vehicle vehicle = this.getDriver(); 
+        if (vehicle == null) { 
+            vehicle = new Vehicle(seatNumber, bikeSpotNumber, this); 
+            this.setDriver(vehicle); // via méthode de classe 
+        } else { 
+            vehicle.setSeatNumber(seatNumber); 
+            vehicle.setBikeSpotNumber(bikeSpotNumber); 
+        } 
+        ride.addVehicle(vehicle); 
+        // Persistance via DAO 
+        if (!vehicle.create(conn)) { 
+            throw new RuntimeException("Échec enregistrement véhicule"); 
+        } 
+    }
 
-	    if (!vehicle.create(connexion)) {
-	        throw new RuntimeException("Échec de l'enregistrement du véhicule");
-	    }
-	}
     public boolean create(Connection conn) 
     {
     		MemberDAO dao = new MemberDAO(conn);
     		return dao.create(this);
+    }
+    
+    public boolean update(Connection conn) 
+    {
+    		MemberDAO dao = new MemberDAO(conn);
+    		return dao.update(this);
+    }
+    // Member.java
+    public Vehicle getOrCreateVehicle(Connection conn) throws SQLException {
+        VehicleDAO dao = new VehicleDAO(conn);
+        Vehicle vehicle = dao.find(this.getIdMember()); 
+
+        if (vehicle != null) {
+            vehicle.setDriver(this);
+            return vehicle;
+        } else {
+            Vehicle newVehicle = new Vehicle(0, 0, this);
+            if (dao.create(newVehicle)) {
+                return newVehicle;
+            } else {
+                throw new SQLException("Échec création véhicule");
+            }
+        }
     }
 }

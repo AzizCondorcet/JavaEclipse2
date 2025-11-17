@@ -84,8 +84,18 @@ public class MemberDAO extends DAO<Member> {
     public boolean delete(Member obj) { return false; }
 
     @Override
-    public boolean update(Member obj) { return false; }
-
+    public boolean update(Member obj) 
+    {
+        String sql = "UPDATE Member SET balance = ? WHERE idPerson = ?";
+        try (PreparedStatement ps = connect.prepareStatement(sql)) {
+            ps.setDouble(1, obj.getBalance());
+            ps.setInt(2, obj.getId());
+            return ps.executeUpdate() > 0;
+        } catch (SQLException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
     @Override
     public Member find(int id) { return null; }
 }

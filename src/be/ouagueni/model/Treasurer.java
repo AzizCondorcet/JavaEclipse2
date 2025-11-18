@@ -8,50 +8,44 @@ import java.util.List;
 public class Treasurer extends Person {
     private static final long serialVersionUID = 1L;
 
-    public Treasurer() {
-        super();
-    }
-
+    public Treasurer() { super(); }
     public Treasurer(int id, String name, String firstname, String tel, String password) {
         super(id, name, firstname, tel, password);
     }
 
-    // ==============================================================
-    // 1. RAPPEL DE DETTE (cotisations + covoiturage non payés)
-    // ==============================================================
-    public List<Member> getMembersInDebt(Connection conn) {
+    // 1. Rappel → retourne juste la liste des membres en dette
+    public List<Member> sendReminderLetter(Connection conn) {
         return new TreasurerDAO(conn).getMembersInDebt();
     }
 
-    // ==============================================================
-    // 2. VALIDER LES PAIEMENTS COVOITURAGE (le plus utilisé en Belgique)
-    // ==============================================================
-    public List<Ride> getRidesWithPendingPayments(Connection conn) {
-        return new TreasurerDAO(conn).getRidesWithPendingPayments();
+    // 2. Valider les paiements → retourne le nombre de paiements validés
+    public int payDriver(Connection conn) {
+        TreasurerDAO dao = new TreasurerDAO(conn);
+        List<Ride> pendingRides = dao.getRidesWithPendingPayments();
+        if (pendingRides.isEmpty()) return 0;
+
+        // On prend la première sortie en attente (ou tu peux en choisir une dans l'IHM)
+        Ride ride = pendingRides.get(0);
+        List<Member> passengers = dao.getPendingPassengersForRide(ride.getId());
+
+        List<Integer> ids = passengers.stream()
+                                      .map(Member::getIdMember)
+                                      .toList();
+
+        return dao.confirmPassengerPayments(ride.getId(), ids);
     }
 
-    public List<Member> getPendingPassengersForRide(Connection conn, int rideId) {
-        return new TreasurerDAO(conn).getPendingPassengersForRide(rideId);
-    }
+    // 3. Réclamer frais → retourne une paire (sortie + liste des membres en dette)
+    public record ClaimResult(Ride ride, List<Member> unpaidMembers) {}
+    
+    public ClaimResult claimFee(Connection conn)
+    {
+        TreasurerDAO dao = new TreasurerDAO(conn);
+        List<Ride> rides = dao.getUnpaidRides();
+        if (rides.isEmpty()) return new ClaimResult(null, List.of());
 
-    /** 
-     * Valide que les passagers sélectionnés ont bien payé leur forfait (cash ou virement privé)
-     * Met à jour : Inscription.paymentConfirmed = 1
-     *             Member.balance += Ride.fee
-     * @return nombre de membres mis à jour
-     */
-    public int confirmPassengerPayments(Connection conn, int rideId, List<Integer> passengerIds) {
-        return new TreasurerDAO(conn).confirmPassengerPayments(rideId, passengerIds);
-    }
-
-    // ==============================================================
-    // 3. RÉCLAMER / VOIR LES FRAIS NON PAYÉS (optionnel mais pratique)
-    // ==============================================================
-    public List<Ride> getUnpaidRides(Connection conn) {
-        return new TreasurerDAO(conn).getUnpaidRides();
-    }
-
-    public List<Member> getUnpaidMembersForRide(Connection conn, int rideId) {
-        return new TreasurerDAO(conn).getUnpaidMembersForRide(rideId);
+        Ride ride = rides.get(0); // première sortie avec dette
+        List<Member> unpaid = dao.getUnpaidMembersForRide(ride.getId());
+        return new ClaimResult(ride, unpaid);
     }
 }

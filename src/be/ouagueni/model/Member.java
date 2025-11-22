@@ -7,8 +7,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import be.ouagueni.dao.MemberDAO;
-import be.ouagueni.dao.RideDAO;
-import be.ouagueni.dao.VehicleDAO;
 
 public class Member extends Person implements Serializable {
 
@@ -86,38 +84,44 @@ public class Member extends Person implements Serializable {
     
     public boolean isPassengerIn(Vehicle vehicle) {return this.passengers.contains(vehicle);}
 
-    public double calculateBalance() {  
-        int inscriptionCount = this.inscriptions != null ? this.inscriptions.size() : 0;
-        return 20.0 + 5.0 * inscriptionCount;
+    public double calculateBalance(){
+        int categoryCount = (categories != null) ? categories.size() : 0;
+        double total = 20.0 + 5.0 * categoryCount;
+        return Math.round(total * 100.0) / 100.0;
     }
-    
     public boolean checkBalance() {
         return this.balance <= 0.0;
     }
     
-    public void postAvailability(Ride ride, int seatNumber, int bikeSpotNumber, Connection conn) throws SQLException, IllegalStateException { 
-        // Vérifier via les objets (ou SQL si besoin) 
-        if (ride.getVehicles().stream()
-                .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(this))) { 
-            throw new IllegalStateException("Vous avez déjà posté votre voiture pour cette sortie."); 
-        } 
-        if (seatNumber <= 0 && bikeSpotNumber <= 0) { 
-            throw new IllegalArgumentException("Proposez au moins une place."); 
-        } 
-        // Réutiliser ou créer le véhicule 
-        Vehicle vehicle = this.getDriver(); 
-        if (vehicle == null) { 
-            vehicle = new Vehicle(seatNumber, bikeSpotNumber, this); 
-            this.setDriver(vehicle); // via méthode de classe 
-        } else { 
-            vehicle.setSeatNumber(seatNumber); 
-            vehicle.setBikeSpotNumber(bikeSpotNumber); 
-        } 
-        ride.addVehicle(vehicle); 
-        // Persistance via DAO 
-        if (!vehicle.create(conn)) { 
-            throw new RuntimeException("Échec enregistrement véhicule"); 
-        } 
+    public void postAvailability(Ride ride, int seatNumber, int bikeSpotNumber, Connection conn) throws SQLException, IllegalStateException {
+
+        if (this.getBalance() < 0) {
+            throw new IllegalStateException("Vous avez une dette de " + String.format("%.2f €", -this.getBalance()));
+        }
+
+        if (ride.getVehicles().stream().anyMatch(v -> v.getDriver() != null && v.getDriver().equals(this))) {
+            throw new IllegalStateException("Vous avez déjà posté votre voiture pour cette sortie.");
+        }
+
+        if (seatNumber <= 0 && bikeSpotNumber <= 0) {
+            throw new IllegalArgumentException("Proposez au moins une place.");
+        }
+
+        // Récupérer ou créer le véhicule → logique encapsulée dans Vehicle
+        Vehicle vehicle = Vehicle.getOrCreateForDriver(this, conn);
+
+        // Mettre à jour les capacités
+        vehicle.setSeatNumber(seatNumber);
+        vehicle.setBikeSpotNumber(bikeSpotNumber);
+
+        // Ajouter la ride
+        vehicle.addRide(ride);
+        ride.addVehicle(vehicle);
+
+        // Persistance centralisée dans Vehicle
+        if (!vehicle.save(conn)) {
+            throw new SQLException("Échec de la sauvegarde du véhicule");
+        }
     }
 
     public boolean create(Connection conn) 
@@ -130,22 +134,5 @@ public class Member extends Person implements Serializable {
     {
     		MemberDAO dao = new MemberDAO(conn);
     		return dao.update(this);
-    }
-    // Member.java
-    public Vehicle getOrCreateVehicle(Connection conn) throws SQLException {
-        VehicleDAO dao = new VehicleDAO(conn);
-        Vehicle vehicle = dao.find(this.getIdMember()); 
-
-        if (vehicle != null) {
-            vehicle.setDriver(this);
-            return vehicle;
-        } else {
-            Vehicle newVehicle = new Vehicle(0, 0, this);
-            if (dao.create(newVehicle)) {
-                return newVehicle;
-            } else {
-                throw new SQLException("Échec création véhicule");
-            }
-        }
     }
 }

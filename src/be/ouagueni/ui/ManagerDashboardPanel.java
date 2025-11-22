@@ -5,6 +5,11 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.sql.Connection;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.HashSet;
 
 public class ManagerDashboardPanel extends JPanel {
 
@@ -33,8 +38,12 @@ public class ManagerDashboardPanel extends JPanel {
         topButtons.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
         JButton btnCreateBalade = new JButton("Créer une Balade");
         JButton btnViewBalades = new JButton("Voir toutes les balades");
+        JButton btnOptimiserCovoiturage = new JButton("Optimisation covoiturage");
+        btnOptimiserCovoiturage.setIcon(UIManager.getIcon("FileView.directoryIcon")); // petite icône dossier (ou voiture si tu veux)
+        btnOptimiserCovoiturage.setToolTipText("Voir le plan de covoiturage optimisé pour chaque sortie");
         topButtons.add(btnCreateBalade);
         topButtons.add(btnViewBalades);
+        topButtons.add(btnOptimiserCovoiturage);
 
         JPanel northPanel = new JPanel();
         northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
@@ -57,9 +66,112 @@ public class ManagerDashboardPanel extends JPanel {
 
         // --- Actions des boutons ---
         btnCreateBalade.addActionListener(this::showCreateBaladePanel);
+        btnOptimiserCovoiturage.addActionListener(e -> ouvrirOptimisationCovoiturage());
         btnViewBalades.addActionListener(e -> JOptionPane.showMessageDialog(this, "⚙️ Fonctionnalité à venir : Liste des balades"));
     }
 
+    private void ouvrirOptimisationCovoiturage() 
+    {
+    		
+        Set<Ride> ridesDuManager = new HashSet<>();
+
+        Category cat = manager.getCategory();
+        if (cat != null && cat.getCalendar() != null && cat.getCalendar().getRides() != null) {
+            ridesDuManager.addAll(cat.getCalendar().getRides());
+        }
+
+        // On garde seulement celles qui ont au moins une inscription
+        List<Ride> ridesAvecInscriptions = ridesDuManager.stream()
+                .filter(r -> r.getInscriptions() != null && !r.getInscriptions().isEmpty())
+                .sorted(Comparator.comparing(Ride::getStartDate))
+                .toList();
+
+        if (ridesAvecInscriptions.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "Aucune de vos sorties n'a encore d'inscriptions.",
+                "Optimisation covoiturage", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        JDialog dialog = new JDialog(parentFrame, "Optimisation du covoiturage", true);
+        dialog.setSize(1000, 720);
+        dialog.setLocationRelativeTo(this);
+
+        // Liste des sorties à gauche
+        DefaultListModel<Ride> model = new DefaultListModel<>();
+        ridesAvecInscriptions.forEach(model::addElement);
+
+        JList<Ride> listRides = new JList<>(model);
+        listRides.setCellRenderer(new DefaultListCellRenderer() {
+            @Override
+            public Component getListCellRendererComponent(JList<?> list, Object value, int index,
+                                                          boolean isSelected, boolean cellHasFocus) {
+                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
+                if (value instanceof Ride r) {
+                    String cat = r.getCalendar() != null && r.getCalendar().getCategory() != null
+                            ? r.getCalendar().getCategory().getNomCategorie().name()
+                            : "NC";
+                    int inscrits = r.getInscriptions().size();
+                    int vehicules = (int) r.getVehicles().stream().filter(v -> v.getDriver() != null).count();
+                    setText(String.format("%s — %s (%s) — %d inscrits — %d voiture(s)",
+                            r.getStartDate().toLocalDate(),
+                            r.getStartPlace(),
+                            cat,
+                            inscrits,
+                            vehicules));
+                }
+                return this;
+            }
+        });
+
+        listRides.setSelectedIndex(0);
+        JScrollPane scrollList = new JScrollPane(listRides);
+
+        // Zone texte à droite
+        JTextArea textArea = new JTextArea();
+        textArea.setFont(new Font("Consolas", Font.PLAIN, 14));
+        textArea.setEditable(false);
+        textArea.setBackground(new Color(250, 250, 250));
+        JScrollPane scrollText = new JScrollPane(textArea);
+
+        // Mise à jour automatique du rapport
+        listRides.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                Ride ride = listRides.getSelectedValue();
+                if (ride != null) {
+                    OptimisationCovoiturage.ResultatOptimisation resultat = OptimisationCovoiturage.optimiser(ride);
+                    String rapport = OptimisationCovoiturage.genererRapport(ride, resultat);
+                    textArea.setText(rapport);
+                    textArea.setCaretPosition(0);
+                }
+            }
+        });
+
+        // Affichage initial
+        Ride premiere = listRides.getSelectedValue();
+        if (premiere != null) {
+            OptimisationCovoiturage.ResultatOptimisation res = OptimisationCovoiturage.optimiser(premiere);
+            textArea.setText(OptimisationCovoiturage.genererRapport(premiere, res));
+        }
+
+        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, scrollList, scrollText);
+        split.setDividerLocation(380);
+        split.setResizeWeight(0.3);
+
+        dialog.add(split, BorderLayout.CENTER);
+
+        // Bouton fermer stylé
+        JButton btnFermer = new JButton("Fermer");
+        btnFermer.setPreferredSize(new Dimension(100, 35));
+        btnFermer.addActionListener(e -> dialog.dispose());
+
+        JPanel south = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        south.add(btnFermer);
+        dialog.add(south, BorderLayout.SOUTH);
+
+        dialog.setVisible(true);
+    }
+    
     /** Contenu du manager : catégorie + balades */
     private JPanel createManagerContentPanel(Manager manager) {
         JPanel contentPanel = new JPanel();

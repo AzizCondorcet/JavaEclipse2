@@ -2,6 +2,10 @@ package be.ouagueni.model;
 
 
 import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.SQLException;
+
+import be.ouagueni.dao.InscriptionDAO;
 
 public class Inscription implements Serializable {
     private static final long serialVersionUID = 1L;
@@ -31,5 +35,10 @@ public class Inscription implements Serializable {
     public void setRide(Ride ride) { this.ride = ride; }
     public Bike getBikeObj() { return bikeObj; }
     public void setBikeObj(Bike bikeObj) { this.bikeObj = bikeObj; }
+    
+    public boolean create(Connection conn) throws SQLException {
+        InscriptionDAO dao = new InscriptionDAO(conn);
+        return dao.create(this);
+    }
 }
 

@@ -6,7 +6,6 @@ import java.util.HashSet;
 import java.util.Set;
 
 import be.ouagueni.dao.CalendarDAO;
-import be.ouagueni.dao.PersonDAO;
 
 public class Calendar implements Serializable {
 

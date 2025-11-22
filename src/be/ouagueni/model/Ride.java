@@ -43,7 +43,12 @@ public class Ride implements Serializable {
     public void removeInscription(Inscription ins) { this.inscriptions.remove(ins); }
 
     public Set<Vehicle> getVehicles() { return vehicles; }
-    public void setVehicles(Set<Vehicle> vehicles) { this.vehicles = vehicles; }
+    public void setVehicles(Set<Vehicle> vehicles) {
+        if (vehicles != null) {
+            this.vehicles.clear();
+            this.vehicles.addAll(vehicles);
+        }
+    }
     public void addVehicle(Vehicle v) { if (v != null) this.vehicles.add(v); }
     public void removeVehicle(Vehicle v) { this.vehicles.remove(v); }
     
@@ -78,5 +83,30 @@ public class Ride implements Serializable {
     		RideDAO dao = new RideDAO(conn);
     		return dao.getAllRides();
     }
+    public Vehicle findAvailableVehicle(boolean needSeat, int bikeSpotsNeeded, Connection conn) {
+        if (getVehicles().isEmpty() && conn != null) {
+            loadVehicles(conn);
+        }
+
+        System.out.println("Nombre de véhicules chargés pour cette sortie : " + getVehicles().size());
+
+        return getVehicles().stream()
+                .filter(v -> v.getDriver() != null)
+                .filter(v -> {
+                    if (needSeat && v.getAvailableSeatNumber() <= 0) return false;
+                    if (bikeSpotsNeeded > 0 && v.getAvailableBikeSpotNumber(this) < bikeSpotsNeeded) return false;
+                    return true;
+                })
+                .findFirst()
+                .orElse(null);
+    }
+    public void loadVehicles(Connection conn) {
+        if (conn == null) return;
+        RideDAO rideDAO = new RideDAO(conn);
+        Set<Vehicle> loadedVehicles = rideDAO.getVehiclesForRide(this.getId());
+        this.vehicles.clear();
+        this.vehicles.addAll(loadedVehicles);
+    }
+    
 }
 

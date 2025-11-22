@@ -4,14 +4,18 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import be.ouagueni.model.Member;
 import be.ouagueni.model.Person;
 import be.ouagueni.model.Ride;
 import be.ouagueni.model.Treasurer;
 import be.ouagueni.model.TypeCat;
+import be.ouagueni.model.Vehicle;
 import be.ouagueni.model.Bike;
 import be.ouagueni.model.Calendar;
 import be.ouagueni.model.Category;
@@ -74,13 +78,18 @@ public class PersonDAO extends DAO<Person> {
 
 	        if (rsMember.next()) {
 	            Member member = new Member();
-	            member.setId(personId);
+	            
+	            // CORRECT : l'ID principal du Member est idMember
+	            member.setId(rsMember.getInt("idMember"));  // <-- CHANGEMENT ICI !!!
+	            member.setIdMember(rsMember.getInt("idMember"));  // redondant mais clair
+	            
 	            member.setName(name);
 	            member.setFirstname(firstname);
 	            member.setTel(tel);
 	            member.setPassword(psw);
 	            member.setBalance(rsMember.getDouble("balance"));
-	            int idMember = rsMember.getInt("idMember");
+	            
+	            int idMember = rsMember.getInt("idMember");  // déjà fait ci-dessus
 	            member.setIdMember(idMember);
 
 	            rsMember.close();
@@ -166,151 +175,254 @@ public class PersonDAO extends DAO<Person> {
 	            rsInscriptions.close();
 	            psInscriptions.close();
 	            member.setInscriptions(inscriptions);
+	            Set<Bike> bikes = new HashSet<>();
+	            String sqlBikes = "SELECT * FROM Bike WHERE idMember = ?";
+	            try (PreparedStatement psBikes = this.connect.prepareStatement(sqlBikes)) {
+	                psBikes.setInt(1, idMember);
+	                try (ResultSet rsBikes = psBikes.executeQuery()) {
+	                    while (rsBikes.next()) {
+	                        Bike bike = new Bike();
+	                        bike.setId(rsBikes.getInt("idBike"));
+	                        bike.setWeight(rsBikes.getDouble("weight"));
+	                        bike.setLength(rsBikes.getDouble("length"));
+	                        
+	                        int typeId = rsBikes.getInt("bikeType");
+	                        TypeCat typeCat = TypeCat.fromId(typeId);
+	                        if (typeCat != null) {
+	                            bike.setType(typeCat);
+	                        }
+	                        
+	                        bike.setOwner(member);
+	                        bikes.add(bike);
+	                    }
+	                }
+	            }
+	            member.setBikes(bikes);
 
-	            return member; // Member complet
+	         // AJOUTE TOUT CECI ICI
+	         // ================================
+	         System.out.println("Chargement des catégories pour le membre ID " + idMember + "...");
+
+	         Set<Category> categories = new HashSet<>();
+	         String sqlCategories = """
+	             SELECT c.idCategory, t.nameType
+	             FROM Category_Member cm
+	             INNER JOIN Category c ON cm.IDCategory = c.idCategory
+	             INNER JOIN Type t ON c.Type = t.idType
+	             WHERE cm.IDMember = ?
+	             """;
+
+	         try (PreparedStatement psCat = connect.prepareStatement(sqlCategories)) {
+	             psCat.setInt(1, idMember);
+	             try (ResultSet rsCat = psCat.executeQuery()) {
+	                 while (rsCat.next()) {
+	                     Category cat = new Category();
+	                     cat.setid(rsCat.getInt("idCategory"));
+	                     TypeCat typeCat = TypeCat.valueOf(rsCat.getString("nameType"));
+	                     cat.setNomCategorie(typeCat);
+	                     categories.add(cat);
+	                 }
+	             }
+	         } catch (SQLException e) {
+	             System.out.println("Erreur chargement catégories : " + e.getMessage());
+	             e.printStackTrace();
+	         }
+
+	         member.setCategories(categories);
+	         System.out.println("Catégories chargées : " + categories.size() + 
+	             " → " + categories.stream().map(c -> c.getNomCategorie().name()).collect(Collectors.toList()));
+
+	         return member; // Member complet
 	        }
 
 	        rsMember.close();
 	        psMember.close();
 
-	        // 3️⃣ Vérifier si c'est un Manager
+	     // 3. Vérifier si c'est un Manager
 	        String sqlManager = "SELECT * FROM Manager WHERE idPerson = ?";
-	        PreparedStatement psManager = this.connect.prepareStatement(sqlManager);
-	        psManager.setInt(1, personId);
-	        ResultSet rsManager = psManager.executeQuery();
+	        try (PreparedStatement psManager = this.connect.prepareStatement(sqlManager)) 
+	        {
+	            psManager.setInt(1, personId);
+	            try (ResultSet rsManager = psManager.executeQuery()) {
 
-	        if (rsManager.next()) {
-	            Manager manager = new Manager();
-	            manager.setId(personId);
-	            manager.setName(name);
-	            manager.setFirstname(firstname);
-	            manager.setTel(tel);
-	            manager.setPassword(psw);
-	            int idManager = rsManager.getInt("idManager");
+	                if (rsManager.next()) {
+	                    Manager manager = new Manager();
+	                    manager.setId(personId);
+	                    manager.setName(name);
+	                    manager.setFirstname(firstname);
+	                    manager.setTel(tel);
+	                    manager.setPassword(psw);
+	                    int idManager = rsManager.getInt("idManager");
 
-	            rsManager.close();
-	            psManager.close();
+	                    // Map membre → idMember pour éviter les doublons
+	                    java.util.Map<Integer, Member> memberById = new java.util.HashMap<>();
 
-	            // 🔹 Hydrater Category, Calendar et Rides avec inscriptions intégrées
-	            String sqlCategory =
-	                "SELECT cat.idCategory, cat.Type, cal.idCalendar, r.idRide, r.num, r.startPlace, r.startDate, r.fee " +
-	                "FROM Category cat " +
-	                "INNER JOIN Calendar cal ON cat.idCategory = cal.idCategory " +
-	                "LEFT JOIN Ride r ON cal.idCalendar = r.idCalendar " +
-	                "WHERE cat.idManager = ?";
+	                    // === CHARGEMENT CATÉGORIE + CALENDRIER + RIDES + INSCRIPTIONS ===
+	                    String sqlCategory = """
+	                        SELECT cat.idCategory, cat.Type, cal.idCalendar,
+	                               r.idRide, r.num, r.startPlace, r.startDate, r.fee
+	                        FROM Category cat
+	                        INNER JOIN Calendar cal ON cat.idCategory = cal.idCategory
+	                        LEFT JOIN Ride r ON cal.idCalendar = r.idCalendar
+	                        WHERE cat.idManager = ?
+	                        """;
 
-	            PreparedStatement psCategory = this.connect.prepareStatement(sqlCategory);
-	            psCategory.setInt(1, idManager);
-	            ResultSet rsCategory = psCategory.executeQuery();
+	                    try (PreparedStatement psCategory = this.connect.prepareStatement(sqlCategory)) {
+	                        psCategory.setInt(1, idManager);
+	                        try (ResultSet rsCategory = psCategory.executeQuery()) {
 
-	            Category category = null;
-	            Calendar calendar = null;
-	            Set<Ride> rides = new HashSet<>();
+	                            Category category = null;
+	                            Calendar calendar = null;
+	                            Set<Ride> rides = new HashSet<>();
 
-	            while (rsCategory.next()) {
-	                if (category == null) {
-	                    category = new Category();
-	                    category.setid(rsCategory.getInt("idCategory"));
+	                            while (rsCategory.next()) {
+	                                if (category == null) {
+	                                    category = new Category();
+	                                    category.setid(rsCategory.getInt("idCategory"));
+	                                    TypeCat typeCat = TypeCat.fromId(rsCategory.getInt("Type"));
+	                                    if (typeCat != null) category.setNomCategorie(typeCat);
+	                                    category.setManager(manager);
 
-	                    int typeId = rsCategory.getInt("Type");
-	                    TypeCat typeCat = switch (typeId) {
-	                        case 1 -> TypeCat.MountainBike;
-	                        case 2 -> TypeCat.RoadBike;
-	                        case 3 -> TypeCat.Trial;
-	                        case 4 -> TypeCat.Downhill;
-	                        case 5 -> TypeCat.Cross;
-	                        default -> null;
-	                    };
-	                    if (typeCat != null) category.setNomCategorie(typeCat);
-
-	                    category.setManager(manager);
-
-	                    calendar = new Calendar();
-	                    calendar.setid(rsCategory.getInt("idCalendar"));
-	                    calendar.setCategory(category);
-	                    category.setCalendar(calendar);
-	                }
-
-	                int rideId = rsCategory.getInt("idRide");
-	                if (rideId > 0) {
-	                    Ride ride = new Ride();
-	                    ride.setId(rideId);
-	                    ride.setnum(rsCategory.getInt("num"));
-	                    ride.setStartPlace(rsCategory.getString("startPlace"));
-	                    java.sql.Timestamp timestamp = rsCategory.getTimestamp("startDate");
-	                    if (timestamp != null) ride.setStartDate(timestamp.toLocalDateTime());
-	                    ride.setFee(rsCategory.getDouble("fee"));
-	                    ride.setCalendar(calendar);
-
-	                    // 🔹 Intégrer les inscriptions du ride directement
-	                    String sqlInscriptions =
-	                        "SELECT i.idInscription, i.passenger, i.bike, " +
-	                        "m.idPerson, p.namesPers, p.firstname, p.tel, p.psw, m.balance, " +
-	                        "b.idBike, b.weight, b.bikeType, b.length " +
-	                        "FROM Inscription i " +
-	                        "INNER JOIN Member m ON i.idMember = m.idMember " +
-	                        "INNER JOIN Person p ON m.idPerson = p.id " +
-	                        "LEFT JOIN Bike b ON i.idBike = b.idBike " +
-	                        "WHERE i.idRide = ?";
-
-	                    try (PreparedStatement psIns = this.connect.prepareStatement(sqlInscriptions)) {
-	                        psIns.setInt(1, rideId);
-	                        try (ResultSet rsIns = psIns.executeQuery()) {
-	                            Set<Inscription> rideInscriptions = new HashSet<>();
-	                            while (rsIns.next()) {
-	                                Inscription ins = new Inscription(
-	                                    rsIns.getInt("idInscription"),
-	                                    rsIns.getBoolean("passenger"),
-	                                    rsIns.getBoolean("bike")
-	                                );
-
-	                                Member memberIns = new Member();
-	                                memberIns.setId(rsIns.getInt("idPerson"));
-	                                memberIns.setName(rsIns.getString("namesPers"));
-	                                memberIns.setFirstname(rsIns.getString("firstname"));
-	                                memberIns.setTel(rsIns.getString("tel"));
-	                                memberIns.setPassword(rsIns.getString("psw"));
-	                                memberIns.setBalance(rsIns.getDouble("balance"));
-
-	                                ins.setMember(memberIns);
-
-	                                if (rsIns.getBoolean("bike") && rsIns.getObject("idBike") != null) {
-	                                    int typeId3 = rsIns.getInt("bikeType"); // type stocké en int dans la BDD
-	                                    TypeCat typeCat3 = TypeCat.fromId(typeId3); // convertir en TypeCat
-
-	                                    Bike bike = new Bike(
-	                                        rsIns.getInt("idBike"),
-	                                        rsIns.getDouble("weight"),
-	                                        typeCat3,
-	                                        rsIns.getDouble("length"),
-	                                        memberIns
-	                                    );
-	                                    ins.setBikeObj(bike);
+	                                    calendar = new Calendar();
+	                                    calendar.setid(rsCategory.getInt("idCalendar"));
+	                                    calendar.setCategory(category);
+	                                    category.setCalendar(calendar);
 	                                }
 
+	                                int rideId = rsCategory.getInt("idRide");
+	                                if (rideId > 0) {
+	                                    Ride ride = new Ride();
+	                                    ride.setId(rideId);
+	                                    ride.setnum(rsCategory.getInt("num"));
+	                                    ride.setStartPlace(rsCategory.getString("startPlace"));
+	                                    java.sql.Timestamp ts = rsCategory.getTimestamp("startDate");
+	                                    if (ts != null) ride.setStartDate(ts.toLocalDateTime());
+	                                    ride.setFee(rsCategory.getDouble("fee"));
+	                                    ride.setCalendar(calendar);
 
-	                                rideInscriptions.add(ins);
+	                                    // === INSCRIPTIONS DU RIDE ===
+	                                    String sqlIns = """
+	                                        SELECT i.idInscription, i.passenger, i.bike, i.idMember,
+	                                               p.id, p.namesPers, p.firstname, p.tel, p.psw, m.balance,
+	                                               b.idBike, b.weight, b.bikeType, b.length
+	                                        FROM Inscription i
+	                                        INNER JOIN Member m ON i.idMember = m.idMember
+	                                        INNER JOIN Person p ON m.idPerson = p.id
+	                                        LEFT JOIN Bike b ON i.idBike = b.idBike
+	                                        WHERE i.idRide = ?
+	                                        """;
+
+	                                    try (PreparedStatement psIns = this.connect.prepareStatement(sqlIns)) {
+	                                        psIns.setInt(1, rideId);
+	                                        try (ResultSet rsIns = psIns.executeQuery()) {
+	                                            Set<Inscription> inscriptions = new HashSet<>();
+	                                            while (rsIns.next()) {
+	                                                int idMember = rsIns.getInt("idMember");
+
+	                                                Member member = memberById.computeIfAbsent(idMember, id -> {
+	                                                	try {
+	                                                        Member m = new Member();
+	                                                        m.setIdMember(idMember);
+	                                                        m.setId(rsIns.getInt("id"));                    // maintenant OK car dans un try
+	                                                        m.setName(rsIns.getString("namesPers"));
+	                                                        m.setFirstname(rsIns.getString("firstname"));
+	                                                        m.setTel(rsIns.getString("tel"));
+	                                                        m.setPassword(rsIns.getString("psw"));
+	                                                        m.setBalance(rsIns.getDouble("balance"));
+	                                                        return m;
+	                                                    } catch (SQLException e) {
+	                                                        throw new RuntimeException("Erreur lors de la lecture du membre ID " + idMember, e);
+	                                                    }	                                                });
+
+	                                                Inscription ins = new Inscription(
+	                                                    rsIns.getInt("idInscription"),
+	                                                    rsIns.getBoolean("passenger"),
+	                                                    rsIns.getBoolean("bike")
+	                                                );
+	                                                ins.setMember(member);
+	                                                ins.setRide(ride);
+
+	                                                if (rsIns.getBoolean("bike") && rsIns.getObject("idBike") != null) {
+	                                                    TypeCat bikeType = TypeCat.fromId(rsIns.getInt("bikeType"));
+	                                                    Bike bike = new Bike(
+	                                                        rsIns.getInt("idBike"),
+	                                                        rsIns.getDouble("weight"),
+	                                                        bikeType,
+	                                                        rsIns.getDouble("length"),
+	                                                        member
+	                                                    );
+	                                                    ins.setBikeObj(bike);
+	                                                }
+	                                                inscriptions.add(ins);
+	                                            }
+	                                            ride.setInscriptions(inscriptions);
+	                                        }
+	                                    }
+	                                    rides.add(ride);
+	                                }
 	                            }
-	                            ride.setInscriptions(rideInscriptions);
+
+	                            if (!memberById.isEmpty()) {
+	                                String inClause = memberById.keySet().stream()
+	                                    .map(String::valueOf)
+	                                    .collect(Collectors.joining(","));
+
+	                                String sqlVeh = "SELECT * FROM Vehicule WHERE idMemberDriver IN (" + inClause + ")";
+
+	                                try (PreparedStatement psVeh = this.connect.prepareStatement(sqlVeh);
+	                                     ResultSet rsVeh = psVeh.executeQuery()) {
+
+	                                    // 🔹 Map pour stocker les véhicules par membre
+	                                    Map<Integer, Vehicle> vehiclesByMember = new HashMap<>();
+
+	                                    while (rsVeh.next()) {
+	                                        Vehicle vehicle = new Vehicle();
+	                                        vehicle.setId(rsVeh.getInt("idVehicule"));
+	                                        vehicle.setSeatNumber(rsVeh.getInt("seatNumber"));
+	                                        vehicle.setBikeSpotNumber(rsVeh.getInt("bikeSpotNumber"));
+
+	                                        int driverId = rsVeh.getInt("idMemberDriver");
+	                                        Member driver = memberById.get(driverId);
+	                                        if (driver != null) {
+	                                            vehicle.setDriver(driver);
+	                                            driver.setDriver(vehicle);
+	                                            vehiclesByMember.put(driverId, vehicle);
+	                                        }
+	                                    }
+
+	                                    // 🔹 MAINTENANT : Associer les véhicules aux Rides
+	                                    for (Ride ride : rides) {
+	                                        Set<Vehicle> vehiclesDuRide = new HashSet<>();
+	                                        
+	                                        if (ride.getInscriptions() != null) {
+	                                            for (Inscription ins : ride.getInscriptions()) {
+	                                                Member member = ins.getMember();
+	                                                if (member != null && vehiclesByMember.containsKey(member.getIdMember())) {
+	                                                    vehiclesDuRide.add(vehiclesByMember.get(member.getIdMember()));
+	                                                }
+	                                            }
+	                                        }
+	                                        
+	                                        ride.setVehicles(vehiclesDuRide);
+	                                    }
+	                                }
+	                                System.out.println("Véhicules chargés et associés aux rides.");
+	                            }
+
+	                            // Finalisation des relations
+	                            if (calendar != null) calendar.setRides(rides);
+	                            if (category != null) manager.setCategory(category);
+
+	                            System.out.println("Manager chargé avec succès – covoiturage prêt !");
+	                            return manager;
 	                        }
 	                    }
-
-	                    rides.add(ride);
 	                }
 	            }
-
-	            rsCategory.close();
-	            psCategory.close();
-
-	            if (calendar != null && !rides.isEmpty()) calendar.setRides(rides);
-	            if (category != null) manager.setCategory(category);
-
-	            return manager; // Manager complet
+	        } catch (SQLException e) {
+	            e.printStackTrace();
+	            return null;
 	        }
-
-	        rsManager.close();
-	        psManager.close();
-
 	        // 4️⃣ Vérifier si c'est un Tresurer
 	        String sqlTresurer = "SELECT * FROM Tresurer WHERE idPerson = ?";
 	        PreparedStatement psTresurer = this.connect.prepareStatement(sqlTresurer);

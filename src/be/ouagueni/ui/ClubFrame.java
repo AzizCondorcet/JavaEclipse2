@@ -4,6 +4,9 @@ import be.ouagueni.model.*;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.Connection;
+import java.util.Collections;
+import java.util.HashSet;
+import java.util.Set;
 
 public class ClubFrame extends JFrame {
 
@@ -12,30 +15,44 @@ public class ClubFrame extends JFrame {
     private final Connection conn;
     private Person currentUser;
 
+
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
+            try {
+                // Look & Feel du système (Windows / macOS / Linux)
+                UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+            } catch (Exception ignored) {
+                // Si ça ne marche pas → on garde le Look & Feel par défaut, pas grave
+            }
+
             ClubFrame frame = new ClubFrame();
             frame.setVisible(true);
         });
     }
-    
+
     public ClubFrame() {
         this.conn = AppModel.getInstance().getConnection();
 
-        setTitle("Club Cyclistes");
-        setSize(900, 600);
+        setTitle("Club Cyclistes – Gestion & Covoiturage");
+        setSize(1100, 750);
+        setMinimumSize(new Dimension(900, 600));
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
+        // Panels de base
         mainPanel.add(new LoginPanel(this, conn), "login");
-        mainPanel.add(new RegisterPanel(this, conn), "register"); 
+        mainPanel.add(new RegisterPanel(this, conn), "register");
 
         add(mainPanel);
+
         showPanel("login");
     }
+    // ==================================================================
+    // Méthodes utilitaires
+    // ==================================================================
 
     public void showPanel(String name) {
         cardLayout.show(mainPanel, name);
@@ -49,27 +66,35 @@ public class ClubFrame extends JFrame {
         return currentUser;
     }
 
-    /** Crée dynamiquement le dashboard du membre */
+    public Connection getConnection() {
+        return conn;
+    }
+
     public void showMemberDashboard(Member member) {
-        MemberDashboardPanel memberPanel = new MemberDashboardPanel(this, member, conn);
-        mainPanel.add(memberPanel, "memberDashboard");
+        MemberDashboardPanel panel = new MemberDashboardPanel(this, member, conn);
+        mainPanel.add(panel, "memberDashboard");
         showPanel("memberDashboard");
     }
 
     public void showManagerDashboard(Manager manager) {
-        ManagerDashboardPanel managerPanel = new ManagerDashboardPanel(this, manager, conn);
-        mainPanel.add(managerPanel, "managerDashboard");
+        ManagerDashboardPanel panel = new ManagerDashboardPanel(this, manager, conn);
+        mainPanel.add(panel, "managerDashboard");
         showPanel("managerDashboard");
     }
 
     public void showTreasurerDashboard(Treasurer treasurer) {
-        TreasurerDashboardPanel treasurerPanel = new TreasurerDashboardPanel(this, treasurer, conn);
-        mainPanel.add(treasurerPanel, "treasurerDashboard");
+        TreasurerDashboardPanel panel = new TreasurerDashboardPanel(this, treasurer, conn);
+        mainPanel.add(panel, "treasurerDashboard");
         showPanel("treasurerDashboard");
     }
-    // Ajoute un panel dans le CardLayout
+
     public void addPanel(JPanel panel, String name) {
         mainPanel.add(panel, name);
+        showPanel(name);
     }
 
+    /** Permet de récupérer le ClubFrame depuis n’importe quel composant Swing */
+    public static ClubFrame getInstance(Component component) {
+        return (ClubFrame) SwingUtilities.getWindowAncestor(component);
+    }
 }

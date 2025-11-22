@@ -35,6 +35,19 @@ public class Category implements Serializable {
     public void setCalendar(Calendar calendar) { this.calendar = calendar; }
 
     @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Category category = (Category) o;
+        return id == category.id;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(id);
+    }
+    
+    @Override
     public String toString() {
 		return "Category[nomCategorie=" + type + ", manager=" + manager + "]";
 	}
@@ -43,5 +56,12 @@ public class Category implements Serializable {
     		CategoryDAO dao = new CategoryDAO(conn);
     		return dao.update(ca);
     }
+    public static Set<Category> GetAll(Connection conn) 
+    {
+    		CategoryDAO dao = new CategoryDAO(conn);
+        return dao.GetAll();
+    }
+
+
 }
 

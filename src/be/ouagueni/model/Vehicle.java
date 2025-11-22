@@ -162,6 +162,49 @@ public class Vehicle implements Serializable {
         VehicleDAO dao = new VehicleDAO(conn);
         return dao.create(this);
     }
+    public int getAvailableSeatNumber() {
+        long used = getPassengers().size();
+        return seatNumber - (int) used;
+    }
+
+    public int getAvailableBikeSpotNumber(Ride ride) {
+        if (ride == null) return bikeSpotNumber;
+
+        long usedBikes = getPassengers().stream()
+                .filter(passenger -> passenger != null)
+                .flatMap(passenger -> passenger.getInscriptions().stream())
+                .filter(ins -> ins.getRide() != null && ins.getRide().equals(ride))
+                .filter(Inscription::isBike)
+                .count();
+
+        return bikeSpotNumber - (int) usedBikes;
+    }
   
+    public boolean update(Connection conn) throws SQLException {
+        VehicleDAO dao = new VehicleDAO(conn);
+        return dao.update(this);
+    }
+    
+    public boolean save(Connection conn) throws SQLException {
+        VehicleDAO dao = new VehicleDAO(conn);
+        return dao.save(this); 
+    }
+
+    public static Vehicle getOrCreateForDriver(Member driver, Connection conn) throws SQLException {
+        VehicleDAO dao = new VehicleDAO(conn);
+        Vehicle v = dao.findByDriverId(driver.getIdMember());
+
+        if (v != null) {
+            v.setDriver(driver);
+            return v;
+        } else {
+            Vehicle newVehicle = new Vehicle(1, 0, driver); // valeurs par défaut
+            if (dao.create(newVehicle)) {
+                return newVehicle;
+            } else {
+                throw new SQLException("Échec création véhicule");
+            }
+        }
+    }
     
 }

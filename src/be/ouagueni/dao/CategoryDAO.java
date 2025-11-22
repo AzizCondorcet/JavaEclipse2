@@ -3,8 +3,13 @@ package be.ouagueni.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.util.HashSet;
+import java.util.Set;
+
 import be.ouagueni.model.Category;
 import be.ouagueni.model.Manager;
+import be.ouagueni.model.TypeCat;
 
 public class CategoryDAO extends DAO<Category> {
     public CategoryDAO(Connection conn) { super(conn); }
@@ -101,11 +106,68 @@ public class CategoryDAO extends DAO<Category> {
 	    return false;
 	}
 
-
 	@Override
 	public Category find(int id) {
 		// TODO Auto-generated method stub
 		return null;
+	}
+	
+	public Set<Category> GetAll() {
+	    Set<Category> categories = new HashSet<>();
+	    String sql = """
+	        SELECT 
+	            c.idCategory,
+	            t.idType,
+	            t.nameType,
+	            m.idManager,
+	            p.id AS personId,
+	            p.namesPers,
+	            p.firstname,
+	            p.tel,
+	            p.psw
+	        FROM Category c
+	        INNER JOIN Type t ON c.Type = t.idType
+	        LEFT JOIN Manager m ON c.idManager = m.idManager
+	        LEFT JOIN Person p ON m.idPerson = p.id
+	        ORDER BY t.nameType
+	        """;
+
+	    try (PreparedStatement ps = connect.prepareStatement(sql);
+	         ResultSet rs = ps.executeQuery()) {
+
+	        while (rs.next()) {
+	            // 1. Créer le TypeCat (enum)
+	            TypeCat typeCat = TypeCat.valueOf(rs.getString("nameType"));
+
+	            // 2. Créer le Manager s'il existe
+	            Manager manager = null;
+	            if (rs.getObject("idManager") != null) {
+	                manager = new Manager(
+	                    rs.getInt("personId"),
+	                    rs.getString("namesPers"),
+	                    rs.getString("firstname"),
+	                    rs.getString("tel"),
+	                    rs.getString("psw")
+	                );
+	                manager.setId(rs.getInt("idManager"));
+	            }
+
+	            // 3. Créer la Category
+	            Category cat = new Category();
+	            cat.setid(rs.getInt("idCategory"));
+	            cat.setNomCategorie(typeCat);
+	            cat.setManager(manager);
+	            // Note : pas de Calendar ici (pas dans la requête, pas nécessaire pour l'affichage)
+
+	            categories.add(cat);
+	        }
+
+	    } catch (SQLException e) {
+	        e.printStackTrace();
+	        // Tu peux logger ou lancer une exception personnalisée ici
+	    }
+
+	    return categories;
 	}
 
 }

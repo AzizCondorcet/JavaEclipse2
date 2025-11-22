@@ -18,23 +18,31 @@ public class InscriptionDAO extends DAO<Inscription> {
             return false;
         }
 
-        // Requête qui insère seulement si le couple (idMember, idRide) n'existe pas déjà
-        String sql = """
-            INSERT INTO Inscription (idMember, idRide, passenger, bike, idBike)
-            SELECT ?, ?, ?, ?, ?
-            FROM dual
-            WHERE NOT EXISTS (
-                SELECT 1 FROM Inscription 
-                WHERE idMember = ? AND idRide = ?
-            )
-            """;
+        int idMember = ins.getMember().getIdMember();
+        int idRide   = ins.getRide().getId();
 
-        try (PreparedStatement ps = connect.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        // Étape 1 : Vérifier s'il existe déjà
+        String checkSql = "SELECT COUNT(*) FROM Inscription WHERE idMember = ? AND idRide = ?";
+        try (PreparedStatement checkPs = connect.prepareStatement(checkSql)) {
+            checkPs.setInt(1, idMember);
+            checkPs.setInt(2, idRide);
+            try (ResultSet rs = checkPs.executeQuery()) {
+                if (rs.next() && rs.getInt(1) > 0) {
+                    System.err.println("Doublon détecté : ce membre est déjà inscrit à cette balade !");
+                    return false;
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("Erreur lors de la vérification du doublon : " + e.getMessage());
+            e.printStackTrace();
+            return false;
+        }
 
-            int idMember = ins.getMember().getIdMember();
-            int idRide   = ins.getRide().getId();
+        // Étape 2 : Insertion normale (sans FROM dual ni NOT EXISTS)
+        String insertSql = "INSERT INTO Inscription (idMember, idRide, passenger, bike, idBike) VALUES (?, ?, ?, ?, ?)";
 
-            // Paramètres pour l'INSERT
+        try (PreparedStatement ps = connect.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
+
             ps.setInt(1, idMember);
             ps.setInt(2, idRide);
             ps.setBoolean(3, ins.isPassenger());
@@ -43,22 +51,17 @@ public class InscriptionDAO extends DAO<Inscription> {
             if (ins.isBike() && ins.getBikeObj() != null && ins.getBikeObj().getId() > 0) {
                 ps.setInt(5, ins.getBikeObj().getId());
             } else {
-                ps.setNull(5, java.sql.Types.INTEGER);
+                ps.setNull(5, java.sql.Types.INTEGER);  // parfait
             }
-
-            // Paramètres pour le WHERE NOT EXISTS (les mêmes valeurs)
-            ps.setInt(6, idMember);
-            ps.setInt(7, idRide);
 
             int affectedRows = ps.executeUpdate();
 
             if (affectedRows == 0) {
-                // Ça veut dire que le NOT EXISTS a bloqué l'insertion → doublon
-                System.err.println("Doublon détecté : ce membre est déjà inscrit à cette balade !");
+                System.err.println("Échec de l'insertion (aucune ligne affectée)");
                 return false;
             }
 
-            // Récupération de l'ID généré
+            // Récupérer l'ID généré
             try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     ins.setId(generatedKeys.getInt(1));

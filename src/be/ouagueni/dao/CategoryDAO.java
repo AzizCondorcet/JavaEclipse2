@@ -16,10 +16,8 @@ public class CategoryDAO extends DAO<Category> {
 	@Override
 	public boolean create(Category category) {
 	
-	    return false; // en cas d'erreur
+	    return false; 
 	}
-
-
 
 	@Override
 	public boolean delete(Category obj) {
@@ -30,7 +28,6 @@ public class CategoryDAO extends DAO<Category> {
 	@Override
 	public boolean update(Category category) {
 	    try {
-	        // 1️⃣ Récupérer l'ID du Type correspondant au nom de la catégorie
 	        int typeId = -1;
 	        String sqlType = "SELECT idType FROM Type WHERE nameType = ?";
 	        try (PreparedStatement psType = connect.prepareStatement(sqlType)) {

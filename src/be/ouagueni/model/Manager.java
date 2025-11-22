@@ -17,7 +17,6 @@ public class Manager extends Person {
         super(id, name, firstname, tel, password);
     }
     
-    // Getter et Setter pour Category
     public Category getCategory() { 
         return category; 
     }

@@ -5,6 +5,7 @@ import java.sql.Connection;
 import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import be.ouagueni.dao.MemberDAO;
 
@@ -84,46 +85,17 @@ public class Member extends Person implements Serializable {
     
     public boolean isPassengerIn(Vehicle vehicle) {return this.passengers.contains(vehicle);}
 
-    public double calculateBalance(){
-        int categoryCount = (categories != null) ? categories.size() : 0;
-        double total = 20.0 + 5.0 * categoryCount;
+    public double calculateBalance() {
+        Set<TypeCat> uniqueTypes = getBikes().stream()
+                .map(Bike::getType)
+                .collect(Collectors.toSet());
+        int categoryCount = uniqueTypes.size();
+        double total = 20.0 + 5.0 * Math.max(0, categoryCount);
         return Math.round(total * 100.0) / 100.0;
     }
     public boolean checkBalance() {
         return this.balance <= 0.0;
     }
-    
-    public void postAvailability(Ride ride, int seatNumber, int bikeSpotNumber, Connection conn) throws SQLException, IllegalStateException {
-
-        if (this.getBalance() < 0) {
-            throw new IllegalStateException("Vous avez une dette de " + String.format("%.2f €", -this.getBalance()));
-        }
-
-        if (ride.getVehicles().stream().anyMatch(v -> v.getDriver() != null && v.getDriver().equals(this))) {
-            throw new IllegalStateException("Vous avez déjà posté votre voiture pour cette sortie.");
-        }
-
-        if (seatNumber <= 0 && bikeSpotNumber <= 0) {
-            throw new IllegalArgumentException("Proposez au moins une place.");
-        }
-
-        // Récupérer ou créer le véhicule → logique encapsulée dans Vehicle
-        Vehicle vehicle = Vehicle.getOrCreateForDriver(this, conn);
-
-        // Mettre à jour les capacités
-        vehicle.setSeatNumber(seatNumber);
-        vehicle.setBikeSpotNumber(bikeSpotNumber);
-
-        // Ajouter la ride
-        vehicle.addRide(ride);
-        ride.addVehicle(vehicle);
-
-        // Persistance centralisée dans Vehicle
-        if (!vehicle.save(conn)) {
-            throw new SQLException("Échec de la sauvegarde du véhicule");
-        }
-    }
-
     public boolean create(Connection conn) 
     {
     		MemberDAO dao = new MemberDAO(conn);

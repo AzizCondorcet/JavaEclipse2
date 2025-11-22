@@ -144,7 +144,6 @@ public class VehicleDAO extends DAO<Vehicle> {
         // TODO Auto-generated method stub
         return false;
     }
-
     @Override
     public boolean update(Vehicle vehicle) {
         if (vehicle.getId() <= 0 || vehicle.getDriver() == null) {
@@ -367,8 +366,7 @@ public class VehicleDAO extends DAO<Vehicle> {
         } finally {
             try { connect.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
         }
-    }
-    
+    } 
     public Vehicle findByDriverId(int memberId) throws SQLException {
         String sql = "SELECT idVehicule, seatNumber, bikeSpotNumber FROM Vehicule WHERE idMemberDriver = ?";
         try (PreparedStatement ps = connect.prepareStatement(sql)) {

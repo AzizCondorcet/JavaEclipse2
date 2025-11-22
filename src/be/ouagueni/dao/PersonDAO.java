@@ -46,7 +46,7 @@ public class PersonDAO extends DAO<Person> {
 	public Person find(int id) {
 		return null;
 	}
-
+	
 	public Person find(String name, String password) {
 	    try {
 	        String sqlPerson = "SELECT * FROM Person WHERE namesPers = ? AND psw = ?";
@@ -199,8 +199,6 @@ public class PersonDAO extends DAO<Person> {
 	            }
 	            member.setBikes(bikes);
 
-	         // AJOUTE TOUT CECI ICI
-	         // ================================
 	         System.out.println("Chargement des catégories pour le membre ID " + idMember + "...");
 
 	         Set<Category> categories = new HashSet<>();

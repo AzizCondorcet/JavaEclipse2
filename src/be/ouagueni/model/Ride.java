@@ -60,7 +60,8 @@ public class Ride implements Serializable {
     public int getAvailableSeatNumber() { return 0; }
     
     @Override
-    public String toString() {
+    public String toString() 
+    {
         return "Ride{" +
                 "id=" + id +
                 ", num=" + num +
@@ -72,7 +73,6 @@ public class Ride implements Serializable {
                 ", totalVehicles=" + (vehicles != null ? vehicles.size() : 0) +
                 '}';
     }
-
     public boolean createRide(Ride ride,Connection conn) 
     {
     		RideDAO dao = new RideDAO(conn);
@@ -84,7 +84,8 @@ public class Ride implements Serializable {
     		return dao.getAllRides();
     }
     public Vehicle findAvailableVehicle(boolean needSeat, int bikeSpotsNeeded, Connection conn) {
-        if (getVehicles().isEmpty() && conn != null) {
+        
+    	if (getVehicles().isEmpty() && conn != null){
             loadVehicles(conn);
         }
 
@@ -100,13 +101,13 @@ public class Ride implements Serializable {
                 .findFirst()
                 .orElse(null);
     }
-    public void loadVehicles(Connection conn) {
+    public void loadVehicles(Connection conn)
+    {
         if (conn == null) return;
         RideDAO rideDAO = new RideDAO(conn);
         Set<Vehicle> loadedVehicles = rideDAO.getVehiclesForRide(this.getId());
         this.vehicles.clear();
         this.vehicles.addAll(loadedVehicles);
-    }
-    
+    }    
 }
 

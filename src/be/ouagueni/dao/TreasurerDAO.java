@@ -3,7 +3,6 @@ package be.ouagueni.dao;
 
 import be.ouagueni.model.*;
 import java.sql.*;
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -73,11 +72,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
         } catch (SQLException e) { e.printStackTrace(); }
         return list;
     }
-    /*
-     * 	Le passager a payé en cash au chauffeur le jour de la sortie → c’est fait dans la vraie vie  
-		Mais dans la base de données, on n’a pas encore ajouté ces X € à son balance → donc son compte 
-		est toujours débiteur de X € (ou plus)
-     */
+
     // 3. Passagers d'une sortie donnée qui n'ont PAS encore été crédités du forfait
     public List<Member> getPendingPassengersForRide(int rideId) {
         List<Member> list = new ArrayList<>();

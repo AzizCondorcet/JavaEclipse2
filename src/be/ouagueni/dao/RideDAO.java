@@ -143,7 +143,8 @@ public class RideDAO extends DAO<Ride> {
 	    return rides;
 	}
 	
-	public Set<Vehicle> getVehiclesForRide(int rideId) {
+	public Set<Vehicle> getVehiclesForRide(int rideId)
+	{
 	    Set<Vehicle> vehicles = new HashSet<>();
 
 	    String sql = """
@@ -179,5 +180,4 @@ public class RideDAO extends DAO<Ride> {
 	    }
 	    return vehicles;
 	}
-
 }

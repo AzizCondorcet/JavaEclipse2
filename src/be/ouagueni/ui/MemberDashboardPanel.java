@@ -203,32 +203,77 @@ public class MemberDashboardPanel extends JPanel {
                 "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
-    
-    /** Ouvre la fenêtre de gestion des disponibilités */
+
     private void ouvrirDisponibilite(ActionEvent e) {
-        Set<Ride> ridesSet = Ride.allRides(conn);
-        if (ridesSet.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Aucune sortie disponible.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        Set<Ride> allRides = Ride.allRides(conn);
+
+        if (allRides.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Aucune sortie disponible dans la base.", "Info", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
-        List<Ride> rideList = new ArrayList<>(ridesSet);
+        // 1. Récupérer les catégories que le membre possède (via ses vélos)
+        Set<TypeCat> memberCategories = currentMember.getBikes().stream()
+                .map(Bike::getType)  // Type = ton enum : MountainBike, RoadBike, etc.
+                .collect(Collectors.toSet());
 
+        if (memberCategories.isEmpty()) {
+            JOptionPane.showMessageDialog(this,
+                "<html>Vous n'avez enregistré <b>aucun vélo</b>.<br>" +
+                "Impossible de proposer des places conducteur.</html>",
+                "Véhicule manquant", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        // 2. Filtrer les sorties : seulement celles compatibles avec les catégories du membre
+        List<Ride> eligibleRides = allRides.stream()
+                .filter(ride -> {
+                    Category cat = ride.getCalendar() != null ? ride.getCalendar().getCategory() : null;
+                    return cat != null && memberCategories.contains(cat.getNomCategorie());
+                })
+                .sorted(Comparator.comparing(Ride::getStartDate))
+                .collect(Collectors.toList());
+
+        if (eligibleRides.isEmpty()) {
+            String cats = memberCategories.stream()
+                    .map(Enum::name)
+                    .collect(Collectors.joining(", "));
+            JOptionPane.showMessageDialog(this,
+                "<html>Aucune sortie disponible dans vos catégories :<br><b>" + cats + "</b></html>",
+                "Aucune sortie compatible", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // 3. Préparer la liste pour l'affichage
+        List<Ride> rideList = eligibleRides;
+
+        // === DIALOGUE ===
         JDialog dialog = new JDialog(parentFrame, "Poster mes disponibilités", true);
-        dialog.setSize(600, 400);
+        dialog.setSize(800, 520);
         dialog.setLocationRelativeTo(this);
-        dialog.setLayout(new BorderLayout(10, 10));
+        dialog.setLayout(new BorderLayout(15, 15));
 
-        // --- Panel gauche : Liste des rides ---
+        // === PANEL GAUCHE : Liste des sorties compatibles ===
         JPanel leftPanel = new JPanel(new BorderLayout());
-        leftPanel.setBorder(BorderFactory.createTitledBorder("Sélectionner une sortie"));
+        leftPanel.setBorder(BorderFactory.createTitledBorder(
+            "<html><b>Sorties compatibles avec vos vélos (" + memberCategories.size() + " catégorie" +
+            (memberCategories.size() > 1 ? "s" : "") + ")</b></html>"
+        ));
+
+        // Info catégories
+        String catList = memberCategories.stream()
+                .map(t -> "<font color='green'><b>" + t.name() + "</b></font>")
+                .collect(Collectors.joining(", "));
+        JLabel lblInfo = new JLabel("<html>Vos catégories : " + catList + "</html>");
+        lblInfo.setBorder(BorderFactory.createEmptyBorder(5, 10, 10, 10));
+        leftPanel.add(lblInfo, BorderLayout.NORTH);
 
         DefaultListModel<String> listModel = new DefaultListModel<>();
         for (Ride r : rideList) {
-            String display = String.format("%s - %s (%s)",
+            String display = String.format("%s → %s (%s)",
                 r.getStartDate().toLocalDate(),
                 r.getStartPlace(),
-                r.getCalendar().getCategory().getNomCategorie()
+                r.getCalendar().getCategory().getNomCategorie().name()
             );
             listModel.addElement(display);
         }
@@ -236,11 +281,16 @@ public class MemberDashboardPanel extends JPanel {
         JList<String> rideListUI = new JList<>(listModel);
         rideListUI.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         rideListUI.setSelectedIndex(0);
-        JScrollPane scrollPane = new JScrollPane(rideListUI);
-        leftPanel.add(scrollPane, BorderLayout.CENTER);
+        leftPanel.add(new JScrollPane(rideListUI), BorderLayout.CENTER);
 
-        // --- Panel droit : Formulaire ---
-        JPanel rightPanel = new JPanel(new GridLayout(3, 2, 10, 10));
+        // === PANEL DROIT : Formulaire véhicule ===
+        JPanel rightPanel = new JPanel(new GridLayout(4, 2, 10, 15));
+        rightPanel.setBorder(BorderFactory.createTitledBorder(
+            "<html>Vous avez <b>" + currentMember.getBikes().size() + " vélo" +
+            (currentMember.getBikes().size() > 1 ? "s" : "") + "</b> enregistré" +
+            (currentMember.getBikes().size() > 1 ? "s" : "") + "</html>"
+        ));
+
         rightPanel.add(new JLabel("Places passagers :"));
         JSpinner seatSpinner = new JSpinner(new SpinnerNumberModel(1, 1, 5, 1));
         rightPanel.add(seatSpinner);
@@ -249,43 +299,43 @@ public class MemberDashboardPanel extends JPanel {
         JSpinner bikeSpinner = new JSpinner(new SpinnerNumberModel(0, 0, 3, 1));
         rightPanel.add(bikeSpinner);
 
-        // --- CHARGEMENT DU VÉHICULE ---
+        // === CHARGEMENT DU VÉHICULE EXISTANT OU CRÉATION ===
         final Vehicle vehicleToSave;
-        final boolean isNewVehicle;  // ← final ici
+        final boolean[] isNewVehicle = {false};
 
         try {
             vehicleToSave = Vehicle.getOrCreateForDriver(currentMember, conn);
-            isNewVehicle = (vehicleToSave.getId() == 0);
+            isNewVehicle[0] = (vehicleToSave.getId() <= 0);
 
-            if (isNewVehicle) {
+            if (isNewVehicle[0]) {
                 rightPanel.setBorder(BorderFactory.createTitledBorder(
-                    "<html><font color='orange'>Créer un nouveau véhicule</font></html>"
-                ));
+                    "<html><font color='#CC5500'>Nouveau véhicule à créer</font></html>"));
             } else {
                 seatSpinner.setValue(vehicleToSave.getSeatNumber());
                 bikeSpinner.setValue(vehicleToSave.getBikeSpotNumber());
                 rightPanel.setBorder(BorderFactory.createTitledBorder(
-                    "<html><font color='green'>Véhicule existant (ID: " + vehicleToSave.getId() + ")</font></html>"
-                ));
+                    "<html><font color='green'>Véhicule existant (ID: " + vehicleToSave.getId() + ")</font></html>"));
             }
         } catch (SQLException ex) {
-            JOptionPane.showMessageDialog(dialog, "Erreur de chargement du véhicule : " + ex.getMessage(),
+            JOptionPane.showMessageDialog(dialog, "Erreur chargement véhicule : " + ex.getMessage(),
                 "Erreur", JOptionPane.ERROR_MESSAGE);
             dialog.dispose();
             return;
         }
 
-        // --- Panel bas : Boutons ---
-        JPanel bottomPanel = new JPanel(new FlowLayout());
+        // === BOUTONS ===
+        JPanel bottomPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         JButton validerBtn = new JButton("Valider");
         JButton annulerBtn = new JButton("Annuler");
-
         annulerBtn.addActionListener(e2 -> dialog.dispose());
+        bottomPanel.add(validerBtn);
+        bottomPanel.add(annulerBtn);
 
+        // === ACTION VALIDER ===
         validerBtn.addActionListener(e2 -> {
             int selectedIndex = rideListUI.getSelectedIndex();
             if (selectedIndex == -1) {
-                JOptionPane.showMessageDialog(dialog, "Veuillez sélectionner une sortie.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(dialog, "Sélectionnez une sortie.", "Erreur", JOptionPane.ERROR_MESSAGE);
                 return;
             }
 
@@ -303,20 +353,24 @@ public class MemberDashboardPanel extends JPanel {
                 vehicleToSave.setBikeSpotNumber(bikeSpots);
                 vehicleToSave.addRide(rideSelectionnee);
 
-                currentMember.postAvailability(rideSelectionnee, seats, bikeSpots, conn);
+                new RideAvailabilityService().postAvailability(
+                    currentMember, rideSelectionnee, seats, bikeSpots, conn);
 
-                String msg = isNewVehicle
+                String msg = isNewVehicle[0]
                     ? "Nouveau véhicule créé et disponibilités postées !"
                     : "Véhicule mis à jour et disponibilités postées !";
 
                 JOptionPane.showMessageDialog(dialog,
-                    msg + "\n" +
-                    seats + " place(s) passager, " + bikeSpots + " place(s) vélo",
-                    "Succès", JOptionPane.INFORMATION_MESSAGE);
+                    "<html><h3>Succès !</h3>" + msg + "<br><br>" +
+                    seats + " place(s) passager<br>" +
+                    bikeSpots + " place(s) vélo<br><br>" +
+                    "<i>Sortie : " + rideSelectionnee.getStartPlace() + " (" +
+                    rideSelectionnee.getCalendar().getCategory().getNomCategorie() + ")</i></html>",
+                    "Disponibilités enregistrées", JOptionPane.INFORMATION_MESSAGE);
 
                 dialog.dispose();
 
-            } catch (IllegalStateException ex) {
+            } catch ( IllegalStateException ex) {
                 JOptionPane.showMessageDialog(dialog, ex.getMessage(), "Attention", JOptionPane.WARNING_MESSAGE);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(dialog,
@@ -326,18 +380,14 @@ public class MemberDashboardPanel extends JPanel {
             }
         });
 
-        bottomPanel.add(validerBtn);
-        bottomPanel.add(annulerBtn);
-
-        // --- Assemblage ---
-        JPanel mainPanel = new JPanel(new GridLayout(1, 2, 10, 10));
-        mainPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+        // === ASSEMBLAGE FINAL ===
+        JPanel mainPanel = new JPanel(new GridLayout(1, 2, 20, 0));
+        mainPanel.setBorder(BorderFactory.createEmptyBorder(15, 15, 15, 15));
         mainPanel.add(leftPanel);
         mainPanel.add(rightPanel);
 
         dialog.add(mainPanel, BorderLayout.CENTER);
         dialog.add(bottomPanel, BorderLayout.SOUTH);
-
         dialog.setVisible(true);
     }
 
@@ -517,8 +567,8 @@ public class MemberDashboardPanel extends JPanel {
                 inscription.setMember(currentMember);
                 inscription.setRide(selectedRide);
                 inscription.setPassenger(wantPassenger);
-                inscription.setBike(wantBike);
-                inscription.setBikeObj(selectedBike);
+                inscription.setBike(wantBike && selectedBike != null);
+                inscription.setBikeObj(wantBike && selectedBike != null ? selectedBike : null);
 
                 selectedRide.addInscription(inscription);
                 currentMember.addInscription(inscription);
@@ -573,25 +623,39 @@ public class MemberDashboardPanel extends JPanel {
     }
     /*2	* Handle paying the annual fee + additional category fees */
     private void handlePayerCotisation(ActionEvent e) {
-        double due = currentMember.calculateBalance();
+        double due = currentMember.calculateBalance(); // maintenant basé sur les vélos
         double currentBalance = currentMember.getBalance();
-        int count = currentMember.getCategories() != null ? currentMember.getCategories().size() : 0;
 
-        if (due <= 0) {
-            JOptionPane.showMessageDialog(this, "Aucune cotisation due.", "Info", JOptionPane.INFORMATION_MESSAGE);
+        // Calcul du nombre de catégories = nombre de types de vélos différents
+        Set<TypeCat> uniqueTypes = currentMember.getBikes().stream()
+                .map(Bike::getType)
+                .collect(Collectors.toSet());
+
+        int categoryCount = uniqueTypes.size();
+        double supplement = 5.0 * Math.max(0, categoryCount);
+        double base = 20.0;
+
+        if (due <= currentBalance) {
+            JOptionPane.showMessageDialog(this, 
+                "Votre cotisation est déjà payée !", 
+                "Info", JOptionPane.INFORMATION_MESSAGE);
             return;
         }
 
         String detail = String.format(
-            "=== COTISATION À PAYER ===\n" +
-            "Inscriptions : %d\n" +
-            "Base : 20,00 €\n" +
-            "Par category : 5,00 € × %d = %.2f €\n" +
-            "────────────────────\n" +
-            "<b>TOTAL DÛ : %.2f €</b>\n\n" +
-            "Solde actuel : %.2f €\n" +
-            "Montant à payer :",
-            count, count, 5.0 * count, due,
+            "<html><h3>COTISATION À PAYER</h3>" +
+            "Base : <b>20,00 €</b><br>" +
+            "Catégories détectées : <b>%d</b> (%s)<br>" +
+            "Supplément : 5,00 € × %d = <b>%.2f €</b><br>" +
+            "<hr>" +
+            "<b>TOTAL DÛ : %.2f €</b><br><br>" +
+            "Solde actuel : %.2f €<br>" +
+            "Montant à payer :</html>",
+            categoryCount,
+            uniqueTypes.stream().map(Enum::name).collect(Collectors.joining(", ")),
+            Math.max(0, categoryCount),
+            supplement,
+            due,
             currentBalance
         );
 
@@ -607,26 +671,29 @@ public class MemberDashboardPanel extends JPanel {
             return;
         }
 
-        double newBalance = currentBalance - toPay; // PAYER = - dette
+        double newBalance = currentBalance - toPay;
         newBalance = Math.round(newBalance * 100.0) / 100.0;
         currentMember.setBalance(newBalance);
 
         boolean saved = currentMember.update(conn);
 
         String msg = String.format(
-            "Paiement cotisation : -%.2f €\n" +
-            "Inscriptions : %d\n" +
-            "Ancien solde : %.2f €\n" +
-            "Nouveau solde : %.2f €",
-            toPay, count,
+            "<html><h3>Paiement enregistré</h3>" +
+            "Montant payé : <b>-%.2f €</b><br>" +
+            "Catégories : <b>%d</b> (%s)<br>" +
+            "Ancien solde : %.2f €<br>" +
+            "<b>Nouveau solde : %.2f €</b></html>",
+            toPay,
+            categoryCount,
+            uniqueTypes.stream().map(Enum::name).collect(Collectors.joining(", ")),
             currentBalance,
             newBalance
         );
 
         if (saved) {
-            JOptionPane.showMessageDialog(this, msg + "\n\nEnregistré.", "Succès", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(this, msg, "Succès", JOptionPane.INFORMATION_MESSAGE);
         } else {
-            JOptionPane.showMessageDialog(this, msg + "\n\nÉCHEC sauvegarde.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, msg + "<br><br>Échec de la sauvegarde.", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
 
         refreshBalanceLabel();

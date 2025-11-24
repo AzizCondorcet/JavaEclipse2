@@ -1,8 +1,12 @@
 package be.ouagueni.model;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.util.HashSet;
 import java.util.Set;
+
+import be.ouagueni.dao.BikeDAO;
+import be.ouagueni.dao.MemberDAO;
 
 public class Bike implements Serializable {
     private static final long serialVersionUID = -4193360624407477516L;
@@ -103,5 +107,25 @@ public class Bike implements Serializable {
 
     public void removeInscription(Inscription ins) {
         if (ins != null) this.inscriptions.remove(ins);
+    }
+    public boolean update(Connection conn) 
+    {
+    		BikeDAO dao = new BikeDAO(conn);
+    		return dao.update(this);
+    }
+    public boolean create(Connection conn) 
+    {
+    		BikeDAO dao = new BikeDAO(conn);
+    		return dao.create(this);
+    }
+    public boolean delete(Connection conn) 
+    {
+    		BikeDAO dao = new BikeDAO(conn);
+    		return dao.delete(this);
+    }
+    public Bike find(Connection conn, int id) 
+    {
+    		BikeDAO dao = new BikeDAO(conn);
+    		return dao.find(id);
     }
 }

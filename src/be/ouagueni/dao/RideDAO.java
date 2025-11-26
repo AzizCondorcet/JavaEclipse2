@@ -3,6 +3,7 @@ package be.ouagueni.dao;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Timestamp;
 import java.util.HashMap;
@@ -10,12 +11,15 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import be.ouagueni.model.Bike;
 import be.ouagueni.model.Calendar;
 import be.ouagueni.model.Category;
 import be.ouagueni.model.Member;
 import be.ouagueni.model.Ride;
 import be.ouagueni.model.TypeCat;
 import be.ouagueni.model.Vehicle;
+import be.ouagueni.model.Inscription;
+
 
 public class RideDAO extends DAO<Ride> {
     public RideDAO(Connection conn) { super(conn); }
@@ -63,15 +67,18 @@ public class RideDAO extends DAO<Ride> {
 	
 	public Set<Ride> getAllRides() {
 	    Set<Ride> rides = new HashSet<>();
-	    Map<Integer, Ride> rideMap = new HashMap<>(); // pour éviter les doublons
+	    Map<Integer, Ride> rideMap = new HashMap<>();
 
 	    String sql = """
-	        SELECT 
+	        SELECT
 	            r.idRide, r.num, r.startPlace, r.startDate, r.fee,
 	            cal.idCalendar,
 	            cat.idCategory, cat.Type AS catType,
 	            v.idVehicule, v.seatNumber, v.bikeSpotNumber, v.idMemberDriver,
-	            m.idMember, p.firstname, p.namesPers
+	            m.idMember AS driverId, p.firstname AS driverFirstname, p.namesPers AS driverName,
+	            ins.idInscription, ins.passenger, ins.bike AS hasBike, ins.idBike,
+	            pm.idMember AS passagerId, pp.firstname AS passagerFirstname, pp.namesPers AS passagerName,
+	            b.weight, b.bikeType, b.length
 	        FROM (((Ride r
 	        INNER JOIN Calendar cal ON r.idCalendar = cal.idCalendar)
 	        INNER JOIN Category cat ON cal.idCategory = cat.idCategory)
@@ -79,7 +86,11 @@ public class RideDAO extends DAO<Ride> {
 	        LEFT JOIN Vehicule v ON rv.idVehicule = v.idVehicule
 	        LEFT JOIN Member m ON v.idMemberDriver = m.idMember
 	        LEFT JOIN Person p ON m.idPerson = p.id
-	        ORDER BY r.startDate ASC
+	        LEFT JOIN Inscription ins ON r.idRide = ins.idRide
+	        LEFT JOIN Member pm ON ins.idMember = pm.idMember
+	        LEFT JOIN Person pp ON pm.idPerson = pp.id
+	        LEFT JOIN Bike b ON ins.idBike = b.idBike
+	        ORDER BY r.startDate ASC, ins.idInscription
 	        """;
 
 	    try (PreparedStatement ps = connect.prepareStatement(sql);
@@ -88,23 +99,31 @@ public class RideDAO extends DAO<Ride> {
 	        while (rs.next()) {
 	            int rideId = rs.getInt("idRide");
 
+	            // On crée la Ride seulement si elle n'existe pas encore
 	            Ride ride = rideMap.get(rideId);
 	            if (ride == null) {
 	                ride = new Ride();
 	                ride.setId(rideId);
 	                ride.setnum(rs.getInt("num"));
 	                ride.setStartPlace(rs.getString("startPlace"));
+
 	                Timestamp ts = rs.getTimestamp("startDate");
-	                if (ts != null) ride.setStartDate(ts.toLocalDateTime());
+	                if (ts != null) {
+	                    ride.setStartDate(ts.toLocalDateTime());
+	                }
+
 	                ride.setFee(rs.getDouble("fee"));
 
 	                // Calendar + Category
 	                Calendar cal = new Calendar();
 	                cal.setid(rs.getInt("idCalendar"));
+
 	                Category cat = new Category();
 	                cat.setid(rs.getInt("idCategory"));
 	                TypeCat typeCat = TypeCat.fromId(rs.getInt("catType"));
-	                if (typeCat != null) cat.setNomCategorie(typeCat);
+	                if (typeCat != null) {
+	                    cat.setNomCategorie(typeCat);
+	                }
 	                cal.setCategory(cat);
 	                ride.setCalendar(cal);
 
@@ -112,31 +131,62 @@ public class RideDAO extends DAO<Ride> {
 	                rides.add(ride);
 	            }
 
-	            // === CHARGEMENT DU VÉHICULE SI EXISTE ===
+	            // === CHARGEMENT DES VÉHICULES ===
 	            if (rs.getObject("idVehicule") != null) {
 	                int vehId = rs.getInt("idVehicule");
 
-	                // Éviter doublon véhicule
-	                boolean alreadyAdded = ride.getVehicles().stream().anyMatch(v -> v.getId() == vehId);
-	                if (!alreadyAdded) {
+	                if (ride.getVehicles().stream().noneMatch(v -> v.getId() == vehId)) {
 	                    Vehicle v = new Vehicle();
 	                    v.setId(vehId);
 	                    v.setSeatNumber(rs.getInt("seatNumber"));
 	                    v.setBikeSpotNumber(rs.getInt("bikeSpotNumber"));
 
 	                    Member driver = new Member();
-	                    driver.setIdMember(rs.getInt("idMember"));
-	                    driver.setFirstname(rs.getString("firstname"));
-	                    driver.setName(rs.getString("namesPers"));
-	                    // driver.setId(rs.getInt("idPerson")); // si besoin
-
+	                    driver.setIdMember(rs.getInt("driverId"));
+	                    driver.setFirstname(rs.getString("driverFirstname"));
+	                    driver.setName(rs.getString("driverName"));
 	                    v.setDriver(driver);
+
 	                    ride.addVehicle(v);
-	                    System.out.println("Véhicule ID " + vehId + " chargé pour la sortie " + ride.getStartPlace());
+	                    System.out.println("Véhicule ID " + vehId + " chargé pour " + ride.getStartPlace());
+	                }
+	            }
+
+	            // === CHARGEMENT DES INSCRIPTIONS ===
+	            if (rs.getObject("idInscription") != null) {
+	                int insId = rs.getInt("idInscription");
+
+	                if (ride.getInscriptions().stream().noneMatch(i -> i.getId() == insId)) {
+	                    Inscription ins = new Inscription();
+	                    ins.setId(insId);
+	                    ins.setPassenger(rs.getBoolean("passenger"));
+	                    ins.setBike(rs.getBoolean("hasBike"));
+
+	                    Member passager = new Member();
+	                    passager.setIdMember(rs.getInt("passagerId"));
+	                    passager.setFirstname(rs.getString("passagerFirstname"));
+	                    passager.setName(rs.getString("passagerName"));
+	                    ins.setMember(passager);
+
+	                    if (rs.getObject("idBike") != null) {
+	                        Bike bike = new Bike();
+	                        bike.setId(rs.getInt("idBike"));
+	                        bike.setWeight(rs.getDouble("weight"));
+	                        bike.setTypeFromInt(rs.getInt("bikeType"));
+	                        bike.setLength(rs.getDouble("length"));
+	                        ins.setBikeObj(bike);
+	                    }
+
+	                    ride.addInscription(ins);
+	                    System.out.println("Inscription ID " + insId + " chargée : " +
+	                            passager.getFirstname() + " " + passager.getName() +
+	                            " → " + ride.getStartPlace());
 	                }
 	            }
 	        }
-	    } catch (Exception e) {
+
+	    } catch (SQLException e) {
+	        System.err.println("ERREUR SQL dans getAllRides() :");
 	        e.printStackTrace();
 	    }
 

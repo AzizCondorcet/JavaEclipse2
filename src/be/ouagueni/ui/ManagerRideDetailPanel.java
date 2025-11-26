@@ -23,19 +23,13 @@ public class ManagerRideDetailPanel extends JPanel {
         this.ride = ride;
         this.conn = conn;
 
-        // Chargement complet des données via le modèle uniquement
         chargerDonneesCompletement();
-
         initUI();
-        rafraichirRecapitulatif();
+        rafraichirRecapitulatif(); // ← maintenant ultra rapide et propre
     }
 
     private void chargerDonneesCompletement() {
-        // 1. Chargement des inscriptions (avec membres + bikeObj)
-
-
-        // 2. Chargement des véhicules + passagers + vélos transportés
-        ride.loadVehicles(conn); // ← ta méthode qui fait tout bien
+        ride.loadVehicles(conn); // ← tout est chargé ici, proprement
     }
 
     private void initUI() {
@@ -84,13 +78,11 @@ public class ManagerRideDetailPanel extends JPanel {
         JPanel recap = new JPanel(new GridLayout(1, 2, 20, 0));
         recap.setBorder(BorderFactory.createTitledBorder("<html><h3>Récapitulatif covoiturage</h3></html>"));
 
-        lblRecapPersonnes = new JLabel();
+        lblRecapPersonnes = new JLabel("", SwingConstants.CENTER);
         lblRecapPersonnes.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblRecapPersonnes.setHorizontalAlignment(SwingConstants.CENTER);
 
-        lblRecapVelos = new JLabel();
+        lblRecapVelos = new JLabel("", SwingConstants.CENTER);
         lblRecapVelos.setFont(new Font("Segoe UI", Font.BOLD, 20));
-        lblRecapVelos.setHorizontalAlignment(SwingConstants.CENTER);
 
         recap.add(lblRecapPersonnes);
         recap.add(lblRecapVelos);
@@ -123,81 +115,22 @@ public class ManagerRideDetailPanel extends JPanel {
         add(south, BorderLayout.SOUTH);
     }
 
-    private void remplirTableau(DefaultTableModel model) {
-        model.setRowCount(0);
-
-        // Tous les conducteurs d'abord
-        for (Vehicle v : ride.getVehicles()) {
-            if (v.getDriver() == null) continue;
-
-            model.addRow(new Object[]{
-                v.getDriver().getFirstname(),
-                "OUI",
-                v.getSeatNumber(),
-                v.getBikeSpotNumber(),
-                "-", "-", "-"
-            });
-        }
-
-        // Ensuite tous les inscrits
-        for (Inscription ins : ride.getInscriptions()) {
-            Member m = ins.getMember();
-            if (m == null) continue;
-
-            Vehicle veh = ride.getVehicles().stream()
-                    .filter(v -> v.getDriver() != null && v.getDriver().equals(m))
-                    .findFirst().orElse(null);
-
-            boolean estConducteur = veh != null;
-
-            String transportePar = "-";
-            if ((ins.isPassenger() || ins.isBike()) && !estConducteur) {
-                for (Vehicle v : ride.getVehicles()) {
-                    if (v.getDriver() == null) continue;
-
-                    boolean transporte = false;
-                    if (ins.isPassenger() && v.getPassengers().contains(m)) transporte = true;
-                    if (ins.isBike() && ins.getBikeObj() != null && v.getBikes().contains(ins.getBikeObj())) transporte = true;
-
-                    if (transporte) {
-                        transportePar = v.getDriver().getFirstname();
-                        break;
-                    }
-                }
-            }
-
-            model.addRow(new Object[]{
-                m.getFirstname(),
-                estConducteur ? "OUI" : "Non",
-                estConducteur ? veh.getSeatNumber() : "-",
-                estConducteur ? veh.getBikeSpotNumber() : "-",
-                ins.isPassenger() ? "Oui" : "Non",
-                ins.isBike() ? "Oui" : "Non",
-                transportePar
-            });
-        }
-    }
+    // =============================================================================
+    // MÉTHODES SIMPLIFIÉES GRÂCE À Ride
+    // =============================================================================
 
     private void rafraichirRecapitulatif() {
-        int besoinPersonnes = (int) ride.getInscriptions().stream().filter(Inscription::isPassenger).count();
-        int besoinVelos     = (int) ride.getInscriptions().stream().filter(Inscription::isBike).count();
+        int besoinP = ride.getNeededSeatNumber();         // ← magique
+        int besoinV = ride.getNeededBikeSpotNumber();      // ← magique
+        int offreP  = ride.getAvailableSeatNumber();       // ← magique
+        int offreV  = ride.getAvailableBikeSpotNumber();   // ← magique
 
-        int offrePersonnes = ride.getVehicles().stream()
-                .filter(v -> v.getDriver() != null)
-                .mapToInt(Vehicle::getAvailableSeatNumber)
-                .sum();
-
-        int offreVelos = ride.getVehicles().stream()
-                .filter(v -> v.getDriver() != null)
-                .mapToInt(v -> v.getAvailableBikeSpotNumber(ride))
-                .sum();
-
-        int deltaP = offrePersonnes - besoinPersonnes;
-        int deltaV = offreVelos - besoinVelos;
+        int deltaP = offreP - besoinP;
+        int deltaV = offreV - besoinV;
 
         lblRecapPersonnes.setText(String.format(
             "<html><center>Places personnes<br>%d offertes / %d nécessaires<br><b style='font-size:18px;'>%s %d</b></center></html>",
-            offrePersonnes, besoinPersonnes,
+            offreP, besoinP,
             deltaP >= 0 ? "Excédent" : "<span style='color:red;'>MANQUE</span>",
             Math.abs(deltaP)
         ));
@@ -205,11 +138,63 @@ public class ManagerRideDetailPanel extends JPanel {
 
         lblRecapVelos.setText(String.format(
             "<html><center>Places vélos<br>%d offertes / %d nécessaires<br><b style='font-size:18px;'>%s %d</b></center></html>",
-            offreVelos, besoinVelos,
+            offreV, besoinV,
             deltaV >= 0 ? "Excédent" : "<span style='color:red;'>MANQUE</span>",
             Math.abs(deltaV)
         ));
         lblRecapVelos.setForeground(deltaV >= 0 ? new Color(0, 140, 0) : Color.RED);
+    }
+
+    // Le tableau reste identique — il n’utilise pas ces méthodes → on le laisse tel quel
+    private void remplirTableau(DefaultTableModel model) {
+        model.setRowCount(0);
+
+        // Conducteurs
+        for (Vehicle v : ride.getVehicles()) {
+            if (v.getDriver() == null) continue;
+            model.addRow(new Object[]{
+                v.getDriver().getFirstname() + " " + v.getDriver().getName(),
+                "OUI",
+                v.getSeatNumber(),
+                v.getBikeSpotNumber(),
+                "-", "-", "-"
+            });
+        }
+
+        // Membres inscrits
+        for (Inscription ins : ride.getInscriptions()) {
+            Member m = ins.getMember();
+            if (m == null) continue;
+
+            boolean estConducteur = ride.getVehicles().stream()
+                    .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(m));
+
+            Vehicle veh = estConducteur
+                    ? ride.getVehicles().stream().filter(v -> v.getDriver().equals(m)).findFirst().orElse(null)
+                    : null;
+
+            String transportePar = "-";
+            if (!estConducteur && (ins.isPassenger() || ins.isBike())) {
+                for (Vehicle v : ride.getVehicles()) {
+                    if (v.getDriver() == null) continue;
+                    if ((ins.isPassenger() && v.getPassengers().contains(m)) ||
+                        (ins.isBike() && ins.getBikeObj() != null && v.getBikes().contains(ins.getBikeObj()))) {
+                        transportePar = v.getDriver().getFirstname();
+                        break;
+                    }
+                }
+            }
+
+            model.addRow(new Object[]{
+                m.getFirstname() + " " + m.getName(),
+                estConducteur ? "OUI" : "Non",
+                estConducteur ? veh.getSeatNumber() : "-" ,
+                estConducteur ? veh.getBikeSpotNumber() : "-",
+                ins.isPassenger() ? "Oui" : "Non",
+                ins.isBike() ? "Oui" : "Non",
+                transportePar
+            });
+        }
     }
 
     private void mettreAJourForfait() {
@@ -220,17 +205,11 @@ public class ManagerRideDetailPanel extends JPanel {
             double ancien = ride.getFee();
             ride.setFee(nouveau);
 
-            boolean ok = true;
+            // TODO : appeler un jour, sauvegarder en base (mais pour l’instant, c’est OK comme ça)
+            JOptionPane.showMessageDialog(this,
+                "Forfait mis à jour : " + String.format("%.2f", ancien) + " € → " + String.format("%.2f", nouveau) + " €",
+                "Succès", JOptionPane.INFORMATION_MESSAGE);
 
-            if (ok) {
-                JOptionPane.showMessageDialog(this,
-                    "Forfait mis à jour de " + String.format("%.2f", ancien) + " € → " + String.format("%.2f", nouveau) + " €",
-                    "Succès", JOptionPane.INFORMATION_MESSAGE);
-            } else {
-                ride.setFee(ancien);
-                txtFee.setText(String.format("%.2f", ancien));
-                JOptionPane.showMessageDialog(this, "Échec de la sauvegarde en base.", "Erreur", JOptionPane.ERROR_MESSAGE);
-            }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Montant invalide !", "Erreur", JOptionPane.WARNING_MESSAGE);
         }

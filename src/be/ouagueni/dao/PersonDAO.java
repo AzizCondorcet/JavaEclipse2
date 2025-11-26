@@ -131,7 +131,6 @@ public class PersonDAO extends DAO<Person> {
 	                category.setid(rsInscriptions.getInt("cat_idCategory"));
 	                int typeId = rsInscriptions.getInt("cat_Type");
 	                TypeCat typeCat = switch (typeId) {
-	                    case 1 -> TypeCat.MountainBike;
 	                    case 2 -> TypeCat.RoadBike;
 	                    case 3 -> TypeCat.Trial;
 	                    case 4 -> TypeCat.Downhill;

@@ -1,7 +1,6 @@
 package be.ouagueni.ui;
 
 import be.ouagueni.model.*;
-import be.ouagueni.dao.*;
 
 import javax.swing.*;
 import java.awt.*;
@@ -17,7 +16,6 @@ public class RegisterPanel extends JPanel {
     private JPasswordField txtPassword;
     private JComboBox<TypeCat> comboCategory;
 
-    // --- CHAMPS VÉLO ---
     private JTextField txtBikeWeight, txtBikeLength;
     private JComboBox<String> comboBikeType;
 
@@ -60,7 +58,7 @@ public class RegisterPanel extends JPanel {
         gbc.gridx = 0; gbc.gridy = 9;
         add(new JLabel("Type de vélo :"), gbc);
         gbc.gridx = 1;
-        comboBikeType = new JComboBox<>(new String[]{"VTT", "Route", "Trial", "Descente", "Cross"});
+        comboBikeType = new JComboBox<>(new String[]{"Route", "Trial", "Descente", "Cross"});
         add(comboBikeType, gbc);
 
         // === BOUTONS ===
@@ -90,12 +88,12 @@ public class RegisterPanel extends JPanel {
         public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
             if (value instanceof TypeCat) {
                 value = switch ((TypeCat) value) {
-                    case MountainBike -> "VTT";
                     case RoadBike -> "Route";
                     case Trial -> "Trial";
                     case Downhill -> "Descente";
                     case Cross -> "Cross";
                 };
+                
             }
             return super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
         }
@@ -134,7 +132,6 @@ public class RegisterPanel extends JPanel {
 
             // --- Mapper String → TypeCat ---
             TypeCat bikeType = switch (bikeTypeStr) {
-                case "VTT" -> TypeCat.MountainBike;
                 case "Route" -> TypeCat.RoadBike;
                 case "Trial" -> TypeCat.Trial;
                 case "Descente" -> TypeCat.Downhill;

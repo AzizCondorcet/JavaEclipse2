@@ -127,7 +127,6 @@ public class ManagerDashboardPanel extends JPanel {
 
     private void ouvrirOptimisationCovoiturage() {
         List<Ride> rides = AppModel.getInstance().getRidesAvecInscriptions(manager);
-
         if (rides.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Aucune sortie avec inscriptions.", "Info", JOptionPane.INFORMATION_MESSAGE);
             return;
@@ -162,9 +161,16 @@ public class ManagerDashboardPanel extends JPanel {
             if (!e.getValueIsAdjusting()) {
                 Ride selected = list.getSelectedValue();
                 if (selected != null) {
-                    String rapport = AppModel.getInstance().genererRapportOptimisationCovoiturage(selected);
-                    textArea.setText(rapport);
-                    textArea.setCaretPosition(0);
+                    // LA MAGIE : on rafraîchit la sortie depuis la base AVANT l'optimisation
+                    Ride rideAjour = AppModel.getInstance().rafraichirRideDepuisBase(selected.getId());
+
+                    if (rideAjour != null) {
+                        String rapport = AppModel.getInstance().genererRapportOptimisationCovoiturage(rideAjour);
+                        textArea.setText(rapport);
+                        textArea.setCaretPosition(0);
+                    } else {
+                        textArea.setText("Erreur : sortie introuvable.");
+                    }
                 }
             }
         });

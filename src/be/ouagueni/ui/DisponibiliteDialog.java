@@ -92,6 +92,22 @@ public class DisponibiliteDialog extends JDialog {
 
             Ride ride = ridesCompatibles.get(idx);
 
+            // NOUVEAU : Interdire de poster des dispos si déjà inscrit comme passager
+            boolean dejaPassager = ride.getInscriptions().stream()
+                    .anyMatch(ins -> ins.getMember() != null &&
+                            ins.getMember().equals(conducteur) &&
+                            ins.isPassenger());
+
+            if (dejaPassager) {
+                JOptionPane.showMessageDialog(this,
+                    "<html><b>Impossible de proposer vos disponibilités.</b><br><br>" +
+                    "Vous êtes déjà inscrit comme <u>passager</u> sur cette sortie.<br><br>" +
+                    "Un membre ne peut pas être à la fois conducteur et passager sur la même balade.<br><br>" +
+                    "Si vous souhaitez conduire, annulez d'abord votre inscription passager.</html>",
+                    "Action impossible", JOptionPane.WARNING_MESSAGE);
+                return;
+            }
+
             try {
                 boolean success = model.posterDisponibilites(conducteur, ride, passagers, velos);
                 if (success) {

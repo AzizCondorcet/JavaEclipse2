@@ -1,7 +1,6 @@
 package be.ouagueni.model;
 
 public enum TypeCat {
-    MountainBike(1),
     RoadBike(2),
     Trial(3),
     Downhill(4),

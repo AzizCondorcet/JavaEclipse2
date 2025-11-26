@@ -3,6 +3,7 @@ package be.ouagueni.ui;
 import be.ouagueni.model.*;
 
 import javax.swing.*;
+import javax.swing.border.EmptyBorder;
 import java.awt.*;
 import java.util.List;
 
@@ -11,135 +12,181 @@ public class ReservationDialog extends JDialog {
     private final Member membre;
     private final AppModel model = AppModel.getInstance();
 
+    // Composants UI que l'on va réutiliser
+    private JList<Ride> listRides;
+    private JCheckBox chkPassager;
+    private JCheckBox chkVelo;
+    private JComboBox<Bike> comboVelo;
+
     public ReservationDialog(ClubFrame parent, Member membre) {
         super(parent, "Réserver une balade", true);
         this.membre = membre;
 
-        List<Ride> rides = model.getRidesFutures();
+        // Si aucune sortie compatible → message et fermeture immédiate
+        if (model.getRidesCompatiblesPourMembre(membre).isEmpty()) {
+            String types = membre.getBikes().stream()
+                    .map(b -> model.getLibelleCategorie(b.getType()))
+                    .distinct()
+                    .collect(java.util.stream.Collectors.joining(", "));
 
-        if (rides.isEmpty()) {
-            JOptionPane.showMessageDialog(parent, "Aucune sortie future disponible.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            JOptionPane.showMessageDialog(parent,
+                    "Aucune sortie disponible pour vos vélos : " + types,
+                    "Aucune sortie compatible", JOptionPane.INFORMATION_MESSAGE);
             dispose();
             return;
         }
 
-        setSize(1000, 650);
+        initUI();
+        pack();
+        setMinimumSize(new Dimension(1000, 650));
         setLocationRelativeTo(parent);
+    }
+
+    private void initUI() {
         setLayout(new BorderLayout());
 
-        // === Liste des sorties ===
-        JPanel left = new JPanel(new BorderLayout());
-        left.setBorder(BorderFactory.createTitledBorder("Sorties disponibles"));
-
-        JList<Ride> listRides = new JList<>(rides.toArray(new Ride[0]));
+        // ==================== LISTE DES SORTIES ====================
+        List<Ride> rides = model.getRidesCompatiblesPourMembre(membre);
+        listRides = new JList<>(rides.toArray(new Ride[0]));
         listRides.setSelectionMode(ListSelectionModel.SINGLE_SELECTION);
         listRides.setSelectedIndex(0);
+
         listRides.setCellRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index,
                                                           boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof Ride r) {
-                    String cat = r.getCalendar() != null && r.getCalendar().getCategory() != null
-                            ? r.getCalendar().getCategory().getNomCategorie().name() : "Inconnue";
+                    String cat = model.getLibelleCategorie(r.getCalendar().getCategory().getNomCategorie());
                     setText(String.format("%s | %s | %s | %.2f €",
-                            r.getStartDate().toLocalDate(), r.getStartPlace(), cat, r.getFee()));
+                            r.getStartDate().toLocalDate(),
+                            r.getStartPlace(),
+                            cat,
+                            r.getFee()));
                 }
                 return this;
             }
         });
-        left.add(new JScrollPane(listRides), BorderLayout.CENTER);
 
-        // === Options ===
-        JPanel right = new JPanel();
-        right.setLayout(new BoxLayout(right, BoxLayout.Y_AXIS));
-        right.setBorder(BorderFactory.createTitledBorder("Mes besoins"));
-
-        JCheckBox chkPassager = new JCheckBox("Je veux être passager");
+        // ==================== OPTIONS DROITE ====================
+        chkPassager = new JCheckBox("Je veux être passager");
         chkPassager.setSelected(true);
-        JCheckBox chkVelo = new JCheckBox("Je veux transporter mon vélo");
-        JComboBox<Bike> comboVelo = new JComboBox<>();
 
-        if (membre.getBikes().isEmpty()) {
-            chkVelo.setEnabled(false);
-            comboVelo.addItem(null);
-            comboVelo.setEnabled(false);
-        } else {
-            membre.getBikes().forEach(comboVelo::addItem);
-            comboVelo.setEnabled(false);
-        }
-
+        chkVelo = new JCheckBox("Je veux transporter mon vélo");
+        comboVelo = new JComboBox<>();
         comboVelo.setRenderer(new DefaultListCellRenderer() {
             @Override
             public Component getListCellRendererComponent(JList<?> list, Object value, int index,
                                                           boolean isSelected, boolean cellHasFocus) {
                 super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
                 if (value instanceof Bike b) {
-                    setText(b.getType() + " - " + b.getWeight() + "kg");
-                } else {
-                    setText("Aucun vélo");
+                    setText(model.getLibelleCategorie(b.getType()) + " - " + b.getWeight() + " kg");
+                } else if (value == null) {
+                    setText("Aucun vélo compatible");
                 }
                 return this;
             }
         });
 
-        chkVelo.addActionListener(e -> comboVelo.setEnabled(chkVelo.isSelected() && membre.getBikes().size() > 0));
-
-        right.add(Box.createVerticalStrut(20));
-        right.add(chkPassager);
-        right.add(Box.createVerticalStrut(10));
-        right.add(chkVelo);
-        right.add(comboVelo);
-        right.add(Box.createVerticalGlue());
-
-        // === Boutons ===
-        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        JButton btnReserver = new JButton("Réserver");
-        JButton btnAnnuler = new JButton("Annuler");
-        btnAnnuler.addActionListener(e -> dispose());
-        bottom.add(btnReserver);
-        bottom.add(btnAnnuler);
-
-        btnReserver.addActionListener(e -> {
-            Ride ride = listRides.getSelectedValue();
-            if (ride == null) {
-                JOptionPane.showMessageDialog(this, "Sélectionnez une sortie.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            boolean passager = chkPassager.isSelected();
-            boolean avecVelo = chkVelo.isSelected();
-            Bike velo = avecVelo ? (Bike) comboVelo.getSelectedItem() : null;
-
-            if (!passager && !avecVelo) {
-                JOptionPane.showMessageDialog(this, "Choisissez au moins une option.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            AppModel.ReservationResult result = model.reserverBalade(membre, ride, passager, avecVelo, velo);
-
-            if (result.succes) {
-                JOptionPane.showMessageDialog(this,
-                        "<html><h3>Réservation confirmée !</h3>" +
-                        "Sortie : " + ride.getStartPlace() + "<br>" +
-                        "Date : " + ride.getStartDate().toLocalDate() + "<br>" +
-                        "Forfait débité : " + String.format("%.2f €", ride.getFee()) + "<br>" +
-                        "Nouveau solde : " + String.format("%.2f €", result.nouveauSolde) + "<br><br>" +
-                        "Conducteur : " + result.conducteur.getFirstname() + " " + result.conducteur.getName() +
-                        "</html>", "Succès", JOptionPane.INFORMATION_MESSAGE);
-                dispose();
-            } else {
-                JOptionPane.showMessageDialog(this, result.message, "Impossible", JOptionPane.WARNING_MESSAGE);
+        // Mise à jour dynamique du combo selon la sortie sélectionnée
+        listRides.addListSelectionListener(e -> {
+            if (!e.getValueIsAdjusting()) {
+                updateVeloCombo();
             }
         });
+        chkVelo.addActionListener(e -> comboVelo.setEnabled(chkVelo.isSelected()));
 
-        // Assemblage
-        JPanel center = new JPanel(new GridLayout(1, 2, 20, 0));
-        center.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-        center.add(left);
-        center.add(right);
+        updateVeloCombo(); // premier appel
 
+        // Panel droit
+        JPanel panelOptions = new JPanel();
+        panelOptions.setLayout(new BoxLayout(panelOptions, BoxLayout.Y_AXIS));
+        panelOptions.setBorder(BorderFactory.createTitledBorder("Mes besoins"));
+        panelOptions.add(Box.createVerticalStrut(20));
+        panelOptions.add(chkPassager);
+        panelOptions.add(Box.createVerticalStrut(15));
+        panelOptions.add(chkVelo);
+        panelOptions.add(Box.createVerticalStrut(10));
+        panelOptions.add(comboVelo);
+        panelOptions.add(Box.createVerticalGlue());
+
+        // ==================== CENTRE ====================
+        JPanel center = new JPanel(new GridLayout(1, 2, 30, 0));
+        center.setBorder(new EmptyBorder(20, 20, 20, 20));
+        center.add(new JScrollPane(listRides));
+        center.add(panelOptions);
         add(center, BorderLayout.CENTER);
+
+        // ==================== BOUTONS BAS ====================
+        JButton btnReserver = new JButton("Réserver");
+        JButton btnAnnuler = new JButton("Annuler");
+
+        btnAnnuler.addActionListener(e -> dispose());
+
+        btnReserver.addActionListener(e -> effectuerReservation());
+
+        JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+        bottom.add(btnReserver);
+        bottom.add(btnAnnuler);
         add(bottom, BorderLayout.SOUTH);
+    }
+
+    private void updateVeloCombo() {
+        Ride ride = listRides.getSelectedValue();
+        comboVelo.removeAllItems();
+
+        if (ride == null) {
+            comboVelo.setEnabled(false);
+            chkVelo.setEnabled(false);
+            return;
+        }
+
+        List<Bike> velosCompatibles = model.getVelosCompatiblesPourRide(membre, ride);
+
+        if (velosCompatibles.isEmpty()) {
+            comboVelo.addItem(null);
+            comboVelo.setEnabled(false);
+            chkVelo.setEnabled(false);
+            chkVelo.setText("Je veux transporter mon vélo (aucun compatible)");
+        } else {
+            velosCompatibles.forEach(comboVelo::addItem);
+            comboVelo.setSelectedIndex(0);
+            comboVelo.setEnabled(chkVelo.isSelected());
+            chkVelo.setEnabled(true);
+            chkVelo.setText("Je veux transporter mon vélo");
+        }
+    }
+
+    private void effectuerReservation() {
+        Ride rideSelectionnee = listRides.getSelectedValue();
+        if (rideSelectionnee == null) {
+            JOptionPane.showMessageDialog(this, "Veuillez sélectionner une sortie.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        boolean veutPassager = chkPassager.isSelected();
+        boolean veutVelo = chkVelo.isSelected();
+        Bike veloChoisi = veutVelo ? (Bike) comboVelo.getSelectedItem() : null;
+
+        // Toute la logique métier est maintenant dans AppModel
+        AppModel.ReservationResult resultat = model.reserverBaladeAvecVerificationComplete(
+                membre, rideSelectionnee, veutPassager, veutVelo, veloChoisi);
+
+        if (resultat.succes) {
+            JOptionPane.showMessageDialog(this,
+                    "<html><h2 style='color:#2E8B57; text-align:center;'>Réservation confirmée !</h2><br>" +
+                    "<b>Sortie :</b> " + rideSelectionnee.getStartPlace() + "<br>" +
+                    "<b>Date :</b> " + rideSelectionnee.getStartDate().toLocalDate() + "<br>" +
+                    "<b>Forfait débité :</b> " + String.format("%.2f €", rideSelectionnee.getFee()) + "<br>" +
+                    "<b>Nouveau solde :</b> " + String.format("%.2f €", resultat.nouveauSolde) + "<br><br>" +
+                    "<b>Conducteur :</b> " + resultat.conducteur.getFirstname() + " " + resultat.conducteur.getName() +
+                    "<br><br><i>Bon ride !</i></html>",
+                    "Succès", JOptionPane.INFORMATION_MESSAGE);
+            dispose();
+        } else {
+            // Message d'erreur déjà bien formaté dans le modèle
+            JOptionPane.showMessageDialog(this, resultat.message,
+                    "Réservation impossible", resultat.message.contains("déjà inscrit") ? JOptionPane.WARNING_MESSAGE : JOptionPane.ERROR_MESSAGE);
+        }
     }
 }

@@ -2,6 +2,7 @@ package be.ouagueni.model;
 
 import java.sql.Connection;
 import java.sql.SQLException;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
@@ -10,8 +11,11 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+
+
 import be.ouagueni.connection.ClubConnection;
 import be.ouagueni.ui.OptimisationCovoiturage;
+
 
 public class AppModel {
 
@@ -112,6 +116,31 @@ public class AppModel {
         OptimisationCovoiturage.ResultatOptimisation resultat = OptimisationCovoiturage.optimiser(ride);
         return OptimisationCovoiturage.genererRapport(ride, resultat);
     }
+    
+    /**
+     * Rafraîchit complètement une sortie depuis la base
+     * Utilisé par le manager avant l'optimisation
+     */
+    public Ride rafraichirRideDepuisBase(int rideId) {
+        System.out.println("Rafraîchissement complet de la sortie ID " + rideId + " depuis la base...");
+
+        Set<Ride> rides = Ride.allRides(conn);
+        Ride ride = rides.stream()
+                .filter(r -> r.getId() == rideId)
+                .findFirst()
+                .orElse(null);
+
+        if (ride != null) {
+            System.out.println("Sortie " + ride.getStartPlace() + " rechargée : " 
+                + ride.getVehicles().size() + " véhicule(s), "
+                + ride.getInscriptions().size() + " inscription(s)");
+        } else {
+            System.out.println("Sortie non trouvée !");
+        }
+
+        return ride;
+    }
+    
     // ===================================================================
     // ====================== LOGIQUE MEMBRE DASHBOARD ==================
     // ===================================================================
@@ -175,51 +204,73 @@ public class AppModel {
     }
 
     public List<Ride> getRidesCompatiblesConducteur(Member membre) {
+        // Récupère toutes les sorties (existantes)
         Set<Ride> allRides = Ride.allRides(conn);
+
+        // Récupère les types de catégories pratiquées par le membre via ses vélos
         Set<TypeCat> categoriesMembre = membre.getBikes().stream()
                 .map(Bike::getType)
                 .collect(Collectors.toSet());
 
-        if (categoriesMembre.isEmpty()) return List.of();
+        // Si le membre n'a aucun vélo enregistré → pas de sortie compatible
+        if (categoriesMembre.isEmpty()) {
+            return List.of();
+        }
+
+        LocalDate aujourdHui = LocalDate.now();
 
         return allRides.stream()
                 .filter(ride -> ride.getCalendar() != null &&
                         categoriesMembre.contains(ride.getCalendar().getCategory().getNomCategorie()))
+                // NOUVEAU : on garde seulement les sorties d'aujourd'hui ou dans le futur
+                .filter(ride -> !ride.getStartDate().toLocalDate().isBefore(aujourdHui))
+                // Tri par date croissante (la plus proche en premier)
                 .sorted(Comparator.comparing(Ride::getStartDate))
                 .collect(Collectors.toList());
     }
 
     /** 3. Réserver une balade (passager) */
     public ReservationResult reserverBalade(Member membre, Ride ride,
-                                             boolean veutEtrePassager, boolean veutTransporterVelo, Bike velo) {
+            boolean veutEtrePassager, boolean veutTransporterVelo, Bike velo) {
+
+        System.out.println("\n=== TENTATIVE DE RÉSERVATION ===");
+        System.out.println("Membre : " + membre.getFirstname() + " " + membre.getName());
+        System.out.println("Sortie : " + ride.getStartPlace() + " (" + ride.getStartDate().toLocalDate() + ")");
+        System.out.println("Passager : " + veutEtrePassager + " | Avec vélo : " + veutTransporterVelo);
+
         try {
-            // Vérifications
+            // 1. Vérifications de base
             if (!veutEtrePassager && !veutTransporterVelo) {
-                return new ReservationResult(false, "Choisissez au moins une option.");
+                return new ReservationResult(false, "Choisissez au moins une option (passager ou vélo).");
             }
-
             if (veutTransporterVelo && velo == null) {
-                return new ReservationResult(false, "Vélo requis mais non sélectionné.");
+                return new ReservationResult(false, "Vous devez sélectionner un vélo compatible.");
             }
 
-            // Déjà inscrit ?
-            boolean dejaInscrit = ride.getInscriptions().stream()
-                    .anyMatch(ins -> ins.getMember() != null && ins.getMember().equals(membre));
-            if (dejaInscrit) {
-                return new ReservationResult(false, "Vous êtes déjà inscrit à cette sortie.");
-            }
+            // 2. Vérifier s'il est déjà conducteur (pour le message)
+            boolean estConducteur = ride.getVehicles().stream()
+                    .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(membre));
 
-            // Trouver un véhicule disponible
+            // 3. Rechercher un véhicule disponible (chez un AUTRE conducteur)
             int besoinVelos = veutTransporterVelo ? 1 : 0;
-            Vehicle vehicle = ride.findAvailableVehicle(veutEtrePassager, besoinVelos, conn);
+            Vehicle vehicle = ride.findAvailableVehicle(membre, veutEtrePassager, besoinVelos, conn);
+
             if (vehicle == null) {
-                String besoin = veutEtrePassager
-                        ? (veutTransporterVelo ? "passager + vélo" : "passager")
-                        : "vélo";
-                return new ReservationResult(false, "Aucune place disponible pour " + besoin + ".");
+                String message = estConducteur
+                    ? "<html><b>Aucune place disponible chez les autres conducteurs.</b><br><br>"
+                    + "Vous êtes déjà conducteur sur cette sortie.<br>"
+                    + "Il n'y a plus de place libre dans les autres véhicules.</html>"
+                    : "Aucune place disponible pour " +
+                      (veutEtrePassager 
+                          ? (veutTransporterVelo ? "passager + vélo" : "passager seul")
+                          : "vélo seul") + ".";
+
+                return new ReservationResult(false, message);
             }
 
-            // Créer l'inscription
+            System.out.println("Véhicule trouvé → Conducteur : " + vehicle.getDriver().getFirstname() + " " + vehicle.getDriver().getName());
+
+            // 4. Créer l'objet Inscription
             Inscription inscription = new Inscription();
             inscription.setMember(membre);
             inscription.setRide(ride);
@@ -227,25 +278,50 @@ public class AppModel {
             inscription.setBike(veutTransporterVelo);
             inscription.setBikeObj(veutTransporterVelo ? velo : null);
 
+            // 5. Tenter de créer l'inscription en base
+            boolean inscriptionCreee = inscription.create(conn);
+
+            if (!inscriptionCreee) {
+                // LE DAO A REFUSÉ → c'est un doublon (ou erreur grave)
+                return new ReservationResult(false,
+                    "<html><center><h3>Vous êtes déjà inscrit à cette sortie</h3></center><br>" +
+                    "<b>Sortie :</b> " + ride.getStartPlace() + "<br>" +
+                    "<b>Date :</b> " + ride.getStartDate().toLocalDate() + "<br><br>" +
+                    "Vous ne pouvez pas vous inscrire plusieurs fois à la même balade,<br>" +
+                    "même avec des options différentes (avec ou sans vélo).<br><br>" +
+                    "<i>Pour modifier votre inscription,<br>contactez votre conducteur ou le manager.</i></html>");
+            }
+
+            // 6. Inscription acceptée → on met à jour les objets en mémoire
             ride.addInscription(inscription);
             membre.addInscription(inscription);
             if (veutEtrePassager) vehicle.addPassenger(membre);
             if (veutTransporterVelo && velo != null) vehicle.addBike(velo);
 
+            // 7. Débit du forfait
             double nouveauSolde = Math.round((membre.getBalance() - ride.getFee()) * 100.0) / 100.0;
             membre.setBalance(nouveauSolde);
 
-            boolean succes = inscription.create(conn) && membre.update(conn) && vehicle.update(conn);
+            // 8. Sauvegarde finale
+            boolean sauvegardeOk = membre.update(conn) && vehicle.update(conn);
 
-            if (succes) {
-                return new ReservationResult(true, "Réservation confirmée !", nouveauSolde, vehicle.getDriver());
-            } else {
-                return new ReservationResult(false, "Échec de l'enregistrement en base.");
+            if (!sauvegardeOk) {
+                // Très rare, mais on gère quand même
+                return new ReservationResult(false, "Réservation enregistrée mais échec de mise à jour du solde/véhicule.");
             }
 
-        } catch (SQLException e) {
+            // 9. Mise à jour du véhicule dans la liste de la ride (pour cohérence mémoire)
+            ride.getVehicles().removeIf(v -> v.getId() == vehicle.getId());
+            ride.getVehicles().add(vehicle);
+
+            System.out.println("RÉSERVATION RÉUSSIE ! Solde → " + nouveauSolde + " €");
+
+            return new ReservationResult(true, "Réservation confirmée !", nouveauSolde, vehicle.getDriver());
+
+        } catch (Exception e) {
+            System.err.println("ERREUR inattendue lors de la réservation : " + e.getMessage());
             e.printStackTrace();
-            return new ReservationResult(false, "Erreur base de données : " + e.getMessage());
+            return new ReservationResult(false, "Erreur inattendue : " + e.getMessage());
         }
     }
 
@@ -323,5 +399,91 @@ public class AppModel {
             e.printStackTrace();
             return false;
         }
+    }
+    // ===================================================================
+    // ====================== LOGIQUE ReservationDialog ==================
+    // ===================================================================
+    
+    public List<Ride> getRidesCompatiblesPourMembre(Member membre) 
+    {
+        if (membre == null || membre.getBikes().isEmpty()) {
+            return List.of();
+        }
+
+        Set<TypeCat> typesVeloMembre = membre.getBikes().stream()
+                .map(Bike::getType)
+                .collect(Collectors.toSet());
+
+        return getRidesFutures().stream()
+                .filter(ride -> {
+                    Category cat = ride.getCalendar().getCategory();
+                    return cat != null && typesVeloMembre.contains(cat.getNomCategorie());
+                })
+                .sorted(Comparator.comparing(Ride::getStartDate))
+                .toList();
+    }
+    /** Retourne les vélos du membre compatibles avec une sortie donnée */
+    public List<Bike> getVelosCompatiblesPourRide(Member membre, Ride ride) {
+        if (membre == null || ride == null || ride.getCalendar() == null || ride.getCalendar().getCategory() == null) {
+            return List.of();
+        }
+
+        TypeCat typeRequis = ride.getCalendar().getCategory().getNomCategorie();
+
+        return membre.getBikes().stream()
+                .filter(bike -> bike.getType() == typeRequis)
+                .sorted(Comparator.comparing(Bike::getWeight))
+                .toList();
+    }
+    public String getLibelleCategorie(TypeCat type) {
+        return switch (type) {
+            case RoadBike -> "Vélo de route";
+            case Cross    -> "Cyclo-cross";
+            case Downhill -> "VTT Descente";
+            case Trial    -> "Trial";
+        };
+    }
+    // ===================================================================
+    // ====================== ReservationDialog ==========================
+    // ===================================================================
+
+    /**
+     * Version "propre" de la réservation : toute la logique + messages d'erreur riches
+     */
+    public ReservationResult reserverBaladeAvecVerificationComplete(Member membre,
+        Ride ride,
+        boolean veutEtrePassager,
+        boolean veutTransporterVelo,
+        Bike veloChoisi) {
+
+        // 1. Vérifications simples
+        if (!veutEtrePassager && !veutTransporterVelo) {
+            return new ReservationResult(false, "Veuillez choisir au moins une option (passager ou vélo).");
+        }
+        if (veutTransporterVelo && veloChoisi == null) {
+            return new ReservationResult(false, "Vous devez sélectionner un vélo compatible.");
+        }
+
+        // 2. Charger les véhicules pour être sûr d'avoir les données à jour
+        ride.loadVehicles(conn);
+
+        // 3. Empêcher un conducteur de réserver comme passager
+        if (ride.estConducteur(membre)) {
+            return new ReservationResult(false,
+                    "<html>Vous êtes déjà conducteur sur cette sortie.</b><br><br>" +
+                    "Vous ne pouvez pas réserver une place passager/vélo en plus.");
+        }
+
+        // 4. Déléguer à la méthode existante (qui contient toute la logique métier)
+        return reserverBalade(membre, ride, veutEtrePassager, veutTransporterVelo, veloChoisi);
+    }
+
+    /**
+     * Retourne vrai si le membre est conducteur sur au moins un véhicule de la ride
+     */
+    public boolean estDejaConducteurSurRide(Member membre, Ride ride) {
+        if (ride.getVehicles() == null) return false;
+        return ride.getVehicles().stream()
+                .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(membre));
     }
 }

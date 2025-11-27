@@ -7,7 +7,11 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -21,6 +25,7 @@ public class AppModel {
 
     private static AppModel instance;
     private final Connection conn;
+    private final Map<Integer, Boolean> cotisationsPayees = new HashMap<>();
 
     private AppModel() {
         this.conn = ClubConnection.getInstance();
@@ -342,14 +347,35 @@ public class AppModel {
         return 20.0 + supplement;
     }
 
-    public boolean payerCotisation(Member membre, double montantPaye) {
-        double due = calculerCotisationDue(membre);
-        if (montantPaye <= 0) return false;
-
-        double nouveauSolde = Math.round((membre.getBalance() - montantPaye) * 100.0) / 100.0;
-        membre.setBalance(nouveauSolde);
-        return membre.update(conn);
+    public boolean cotisationEstPayee(Member membre) {
+        return cotisationsPayees.getOrDefault(membre.getId(), false);
     }
+    
+    public boolean payerCotisation(Member membre, double montantPaye) {
+
+        if (cotisationEstPayee(membre)) {
+            return false; // déjà payé
+        }
+
+        double due = calculerCotisationDue(membre);
+
+        if (montantPaye < due) {
+            return false; // montant insuffisant
+        }
+
+        // débiter le solde
+        double nouveauSolde =
+                Math.round((membre.getBalance() - montantPaye) * 100.0) / 100.0;
+        membre.setBalance(nouveauSolde);
+        membre.update(conn);
+
+        // marquer comme payée
+        cotisationsPayees.put(membre.getId(), true);
+
+        return true;
+    }
+
+
 
     /** 5. Ajouter fonds */
     public boolean ajouterFonds(Member membre, double montant) {
@@ -486,4 +512,53 @@ public class AppModel {
         return ride.getVehicles().stream()
                 .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(membre));
     }
+   
+    // dans WelcomePanel.java on recupère les rides via Ride.allRides(conn) et 
+    // on les filtres ici
+ // AppModel.java
+    public Map<TypeCat, List<Object[]>> getPublicUpcomingRidesForTable() {
+        
+        DateTimeFormatter fmt = DateTimeFormatter.ofPattern("EEEE dd MMMM yyyy 'à' HH:mm", Locale.FRENCH);
+
+        return Ride.allRides(getConnection()).stream()
+                .filter(r -> {
+                    if (r.getStartDate() == null) return false;
+                    if (!r.getStartDate().isAfter(LocalDateTime.now())) return false;
+                    if (r.getCalendar() == null) {
+                        System.out.println("Ride sans calendar : " + r.getStartPlace());
+                        return false;
+                    }
+                    if (r.getCalendar().getCategory() == null) {
+                        System.out.println("Ride sans catégorie : " + r.getStartPlace());
+                        return false;
+                    }
+                    if (r.getCalendar().getCategory().getNomCategorie() == null) {
+                        System.out.println("Ride avec catégorie null : " + r.getStartPlace());
+                        return false;
+                    }
+                    return true;
+                })
+                .sorted(Comparator.comparing(Ride::getStartDate))
+                .collect(Collectors.groupingBy(
+                    r -> r.getCalendar().getCategory().getNomCategorie(),  // ← 100% correct maintenant
+                    LinkedHashMap::new,
+                    Collectors.mapping(r -> new Object[]{
+                        r.getStartDate().format(fmt),
+                        r.getStartPlace(),
+                        String.format("%.2f €", r.getFee()),
+                        r.getInscriptions().size() + " membre(s)"
+                    }, Collectors.toList())
+                ));
+    }
+    
+ // ====================== Recuperé le Vehicle du member  ======================
+    public Vehicle getVehicleOfMember(Member member) {
+        try {
+            return Vehicle.getOrCreateForDriver(member, getConnection());
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
 }

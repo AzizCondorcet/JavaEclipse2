@@ -79,6 +79,7 @@ public class MemberDashboardPanel extends JPanel {
         tabbedPane = new JTabbedPane();
         tabbedPane.addTab("Mes inscriptions", createMemberInscriptionsPanel());
         tabbedPane.addTab("Mes vélos", createBikesPanel());
+        tabbedPane.addTab("Mon véhicule", createVehiclePanel()); // le vehicule 
         add(tabbedPane, BorderLayout.CENTER);
     }
 
@@ -91,7 +92,39 @@ public class MemberDashboardPanel extends JPanel {
         add(south, BorderLayout.SOUTH);
     }
 
-    // ====================== ACTIONS ======================
+ // ====================== ACTIONS ======================
+
+ // ====================== VÉHICULE (lecture seule) ======================
+    private JPanel createVehiclePanel() {
+        JPanel panel = new JPanel(new BorderLayout());
+        panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+        JLabel title = new JLabel("<html><h3>Mon véhicule déclaré</h3></html>");
+        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        panel.add(title, BorderLayout.NORTH);
+
+        // ICI : on passe par le MODEL → MVC respecté !
+        Vehicle vehicle = AppModel.getInstance().getVehicleOfMember(currentMember);
+
+        JPanel content = new JPanel(new GridLayout(0, 1, 10, 10));
+        content.setBorder(BorderFactory.createRaisedBevelBorder());
+
+        if (vehicle == null || vehicle.getId() <= 0) {
+            JLabel lbl = new JLabel("<html><i>Aucun véhicule déclaré pour le moment.</i></html>", JLabel.CENTER);
+            lbl.setFont(new Font("Segoe UI", Font.ITALIC, 18));
+            lbl.setForeground(Color.GRAY);
+            content.add(lbl);
+        } else {
+            content.add(new JLabel("Places passagers : " + (vehicle.getSeatNumber() - 1) + 
+                                  " (total : " + vehicle.getSeatNumber() + " avec vous)"));
+            content.add(new JLabel("Places pour vélos : " + vehicle.getBikeSpotNumber()));
+            content.add(new JLabel("<html><br><i>Ce véhicule est utilisé quand vous proposez vos disponibilités.</i></html>"));
+        }
+
+        panel.add(content, BorderLayout.CENTER);
+        return panel;
+    }
+    
     private void choisirCategorie() {
         List<Category> disponibles = model.getCategoriesDisponiblesPourMembre(currentMember);
         if (disponibles.isEmpty()) {
@@ -132,32 +165,41 @@ public class MemberDashboardPanel extends JPanel {
     }
 
     private void payerCotisation() {
+
         double due = model.calculerCotisationDue(currentMember);
-        if (due <= currentMember.getBalance()) {
-            JOptionPane.showMessageDialog(this, "Votre cotisation est déjà à jour !", "Information", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
 
-        String input = JOptionPane.showInputDialog(this,
-                "<html><h3>Cotisation à payer</h3>Montant dû : <b>" + String.format("%.2f €", due) + "</b></html>",
-                String.format("%.2f", due));
+        String input = JOptionPane.showInputDialog(
+                this,
+                "Montant à payer : " + String.format("%.2f €", due),
+                String.format("%.2f", due)
+        );
 
-        if (input == null || input.trim().isEmpty()) return;
+        if (input == null || input.isBlank()) return;
 
         try {
             double montant = Double.parseDouble(input.replace(',', '.'));
-            if (montant <= 0) throw new NumberFormatException();
 
-            boolean success = model.payerCotisation(currentMember, montant);
-            JOptionPane.showMessageDialog(this,
-                    success ? "<html>Paiement enregistré !<br>Nouveau solde : <b>" + String.format("%.2f €", currentMember.getBalance()) + "</b></html>" : "Échec du paiement.",
-                    success ? "Succès" : "Erreur",
-                    success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
+            boolean succes = model.payerCotisation(currentMember, montant);
+
+            if (succes) {
+                JOptionPane.showMessageDialog(this,
+                        "Cotisation payée ! Nouveau solde : " 
+                        + String.format("%.2f €", currentMember.getBalance()));
+            } else {
+                JOptionPane.showMessageDialog(this,
+                        "Le paiement a échoué.",
+                        "Erreur", JOptionPane.ERROR_MESSAGE);
+            }
+
             refreshAll();
+
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Montant invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this,
+                    "Montant invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
+
+
 
     private void ajouterFonds() {
         String input = JOptionPane.showInputDialog(this, "Montant à créditer :", "Ajouter fonds");
@@ -180,6 +222,7 @@ public class MemberDashboardPanel extends JPanel {
 
     // ====================== RAFRAÎCHISSEMENT ======================
     private void refreshBalanceAndButtons() {
+
         double balance = currentMember.getBalance();
         String texte = balance > 0
                 ? "<html><font color='blue'><b>Crédit : " + String.format("%.2f €", balance) + "</b></font></html>"
@@ -188,14 +231,18 @@ public class MemberDashboardPanel extends JPanel {
                 : "<html><font color='red'><b>Dette : " + String.format("%.2f €", -balance) + "</b></font></html>";
         lblBalance.setText(texte);
 
-        boolean peutParticiper = balance >= 0;
-        btnDisponibilite.setEnabled(peutParticiper);
-        btnReserver.setEnabled(peutParticiper);
+        // 🔥 NE PAS utiliser le solde pour autoriser !
+        boolean cotisationPayee = model.cotisationEstPayee(currentMember);
+
+        btnDisponibilite.setEnabled(cotisationPayee);
+        btnReserver.setEnabled(cotisationPayee);
     }
+
 
     private void refreshAll() {
         tabbedPane.setComponentAt(0, createMemberInscriptionsPanel());
         tabbedPane.setComponentAt(1, createBikesPanel());
+        tabbedPane.setComponentAt(2, createVehiclePanel());
         refreshBalanceAndButtons();
         revalidate();
         repaint();

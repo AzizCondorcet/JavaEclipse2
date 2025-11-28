@@ -8,7 +8,8 @@ import java.util.Set;
 
 import be.ouagueni.dao.RideDAO;
 
-public class Ride implements Serializable {
+public class Ride implements Serializable 
+{
     private static final long serialVersionUID = 1L;
     private int id;
     private int num;
@@ -17,7 +18,7 @@ public class Ride implements Serializable {
     private double fee;
     private Calendar calendar; // ajoute cette ligne pour l'association avec Calendar
     private Set<Inscription> inscriptions = new HashSet<>();
-    private Set<Vehicle> vehicles = new HashSet<>();
+    private Set<Vehicule> vehicles = new HashSet<>();
 
     public Ride() {}
     public Ride(int num,String startPlace, LocalDateTime startDate, double fee,Calendar calendar) {
@@ -42,21 +43,28 @@ public class Ride implements Serializable {
     public void addInscription(Inscription ins) { if (ins != null) this.inscriptions.add(ins); }
     public void removeInscription(Inscription ins) { this.inscriptions.remove(ins); }
 
-    public Set<Vehicle> getVehicles() { return vehicles; }
-    public void setVehicles(Set<Vehicle> vehicles) {
+    public Set<Vehicule> getVehicles() { return vehicles; }
+    public void setVehicles(Set<Vehicule> vehicles) {
         if (vehicles != null) {
             this.vehicles.clear();
             this.vehicles.addAll(vehicles);
         }
     }
-    public void addVehicle(Vehicle v) { if (v != null) this.vehicles.add(v); }
-    public void removeVehicle(Vehicle v) { this.vehicles.remove(v); }
+    public void addVehicle(Vehicule v) { if (v != null) this.vehicles.add(v); }
+    public void removeVehicle(Vehicule v) { this.vehicles.remove(v); }
     
     public Calendar getCalendar() { return calendar; }
     public void setCalendar(Calendar calendar) { this.calendar = calendar; }
 
     // méthodes utilitaire
     public int getTotalInscriptionNumber() { return inscriptions.size(); }
+    
+    public int getTotalBikeSpotNumber() {
+        return vehicles.stream()
+                .filter(v -> v.getDriver() != null) // ne compte que les véhicules avec un conducteur
+                .mapToInt(Vehicule::getBikeSpotNumber)
+                .sum();
+    }
     
     @Override
     public String toString() 
@@ -82,11 +90,11 @@ public class Ride implements Serializable {
     		RideDAO dao = new RideDAO(conn);
     		return dao.getAllRides();
     }
-    public Vehicle findAvailableVehicle(Member membre, boolean needPassengerSeat, int needBikeSpots, Connection conn) {
+    public Vehicule findAvailableVehicle(Member membre, boolean needPassengerSeat, int needBikeSpots, Connection conn) {
         System.out.println("=== findAvailableVehicle() pour " + membre.getFirstname() + " ===");
         System.out.println("Besoin passager : " + needPassengerSeat + " | Besoin place vélo : " + needBikeSpots);
 
-        for (Vehicle v : this.getVehicles()) {
+        for (Vehicule v : this.getVehicles()) {
             if (v.getDriver() == null) {
                 System.out.println("  → Véhicule ignoré : pas de conducteur");
                 continue;
@@ -124,12 +132,12 @@ public class Ride implements Serializable {
     {
         if (conn == null) return;
         RideDAO rideDAO = new RideDAO(conn);
-        Set<Vehicle> loadedVehicles = rideDAO.getVehiclesForRide(this.getId());
+        Set<Vehicule> loadedVehicles = rideDAO.getVehiclesForRide(this.getId());
         this.vehicles.clear();
         this.vehicles.addAll(loadedVehicles);
     } 
     
- // === AJOUTE ÇA DANS TA CLASSE Ride ===
+    // === AJOUTE ÇA DANS TA CLASSE Ride ===
 
     public int getNeededSeatNumber() {
         return (int) inscriptions.stream()
@@ -160,7 +168,7 @@ public class Ride implements Serializable {
     public boolean estConducteur(Member membre) {
         if (membre == null) return false;
         return vehicles.stream()
-                .map(Vehicle::getDriver)
+                .map(Vehicule::getDriver)
                 .filter(d -> d != null && d.getIdMember() != 0)    // protection
                 .anyMatch(d -> d.getIdMember() == membre.getIdMember());
     }

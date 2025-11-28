@@ -8,8 +8,8 @@ public class OptimisationCovoiturage
 {
 
     public static class ResultatOptimisation {
-        private final Map<Vehicle, List<Member>> affectationPassagers = new HashMap<>();
-        private final Map<Vehicle, List<Bike>> affectationVelos = new HashMap<>();
+        private final Map<Vehicule, List<Member>> affectationPassagers = new HashMap<>();
+        private final Map<Vehicule, List<Bike>> affectationVelos = new HashMap<>();
         private final List<Member> passagersNonAffectes = new ArrayList<>();
         private final List<Bike> velosNonAffectes = new ArrayList<>();
         private int nombreVehiculesUtilises;
@@ -17,8 +17,8 @@ public class OptimisationCovoiturage
         private String messageResultat;
 
         // Getters
-        public Map<Vehicle, List<Member>> getAffectationPassagers() { return affectationPassagers; }
-        public Map<Vehicle, List<Bike>> getAffectationVelos() { return affectationVelos; }
+        public Map<Vehicule, List<Member>> getAffectationPassagers() { return affectationPassagers; }
+        public Map<Vehicule, List<Bike>> getAffectationVelos() { return affectationVelos; }
         public List<Member> getPassagersNonAffectes() { return passagersNonAffectes; }
         public List<Bike> getVelosNonAffectes() { return velosNonAffectes; }
         public int getNombreVehiculesUtilises() { return nombreVehiculesUtilises; }
@@ -44,7 +44,7 @@ public class OptimisationCovoiturage
         int offreVelos      = ride.getAvailableBikeSpotNumber();
 
         // 2. Véhicules disponibles (avec conducteur)
-        List<Vehicle> vehicules = ride.getVehicles().stream()
+        List<Vehicule> vehicules = ride.getVehicles().stream()
                 .filter(v -> v.getDriver() != null)
                 .sorted((v1, v2) -> Integer.compare(
                         v2.getSeatNumber() + v2.getBikeSpotNumber(),
@@ -68,7 +68,7 @@ public class OptimisationCovoiturage
 
         for (Member p : passagers) {
             boolean placeTrouvee = false;
-            for (Vehicle v : vehicules) {
+            for (Vehicule v : vehicules) {
                 if (v.getDriver().equals(p)) continue; // ne peut pas être passager chez soi
                 if (resultat.getAffectationPassagers().get(v).size() < v.getSeatNumber()) {
                     resultat.getAffectationPassagers().get(v).add(p);
@@ -89,7 +89,7 @@ public class OptimisationCovoiturage
 
         for (Bike velo : velos) {
             boolean placeTrouvee = false;
-            for (Vehicle v : vehicules) {
+            for (Vehicule v : vehicules) {
                 if (resultat.getAffectationVelos().get(v).size() < v.getBikeSpotNumber()) {
                     resultat.getAffectationVelos().get(v).add(velo);
                     v.getBikes().add(velo);
@@ -161,7 +161,7 @@ public class OptimisationCovoiturage
         r.append("Détail par véhicule :\n");
         r.append("───────────────────────────────────────────────────\n");
 
-        for (Vehicle v : ride.getVehicles()) {
+        for (Vehicule v : ride.getVehicles()) {
             if (v.getDriver() == null) continue;
             var passagers = resultat.getAffectationPassagers().getOrDefault(v, List.of());
             var velos = resultat.getAffectationVelos().getOrDefault(v, List.of());

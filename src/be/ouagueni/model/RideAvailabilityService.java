@@ -26,7 +26,7 @@ public class RideAvailabilityService {
         }
 
         // 4. Récupération/création du véhicule (Vehicle est responsable de ça → OK)
-        Vehicle vehicle = Vehicle.getOrCreateForDriver(member, conn);
+        Vehicule vehicle = Vehicule.getOrCreateForDriver(member, conn);
 
         // 5. Mise à jour des capacités
         vehicle.setSeatNumber(seatNumber);

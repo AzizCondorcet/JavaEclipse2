@@ -1,7 +1,6 @@
 package be.ouagueni.model;
 
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -194,8 +193,8 @@ public class AppModel {
                 throw new IllegalArgumentException("Proposez au moins une place.");
             }
 
-            Vehicle vehicle = Vehicle.getOrCreateForDriver(conducteur, conn);
-            vehicle.setSeatNumber(placesPassagers);
+            Vehicule vehicle = Vehicule.ensureVehicleExists(conducteur, conn);
+            vehicle.setSeatNumber(placesPassagers + 1); // +1 pour le conducteur
             vehicle.setBikeSpotNumber(placesVelos);
 
             new RideAvailabilityService().postAvailability(
@@ -258,7 +257,7 @@ public class AppModel {
 
             // 3. Rechercher un véhicule disponible (chez un AUTRE conducteur)
             int besoinVelos = veutTransporterVelo ? 1 : 0;
-            Vehicle vehicle = ride.findAvailableVehicle(membre, veutEtrePassager, besoinVelos, conn);
+            Vehicule vehicle = ride.findAvailableVehicle(membre, veutEtrePassager, besoinVelos, conn);
 
             if (vehicle == null) {
                 String message = estConducteur
@@ -551,10 +550,11 @@ public class AppModel {
                 ));
     }
     
- // ====================== Recuperé le Vehicle du member  ======================
-    public Vehicle getVehicleOfMember(Member member) {
+    // ====================== Recuperé le Vehicle du member  ======================
+
+    public Vehicule getVehicleOfMember(Member member) {
         try {
-            return Vehicle.getOrCreateForDriver(member, getConnection());
+            return Vehicule.getOrCreateForDriver(member, getConnection());
         } catch (Exception e) {
             e.printStackTrace();
             return null;

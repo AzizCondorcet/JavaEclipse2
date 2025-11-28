@@ -17,7 +17,7 @@ import be.ouagueni.model.Category;
 import be.ouagueni.model.Member;
 import be.ouagueni.model.Ride;
 import be.ouagueni.model.TypeCat;
-import be.ouagueni.model.Vehicle;
+import be.ouagueni.model.Vehicule;
 import be.ouagueni.model.Inscription;
 
 
@@ -136,7 +136,7 @@ public class RideDAO extends DAO<Ride> {
 	                int vehId = rs.getInt("idVehicule");
 
 	                if (ride.getVehicles().stream().noneMatch(v -> v.getId() == vehId)) {
-	                    Vehicle v = new Vehicle();
+	                	    Vehicule v = new Vehicule();
 	                    v.setId(vehId);
 	                    v.setSeatNumber(rs.getInt("seatNumber"));
 	                    v.setBikeSpotNumber(rs.getInt("bikeSpotNumber"));
@@ -193,9 +193,9 @@ public class RideDAO extends DAO<Ride> {
 	    return rides;
 	}
 	
-	public Set<Vehicle> getVehiclesForRide(int rideId)
+	public Set<Vehicule> getVehiclesForRide(int rideId)
 	{
-	    Set<Vehicle> vehicles = new HashSet<>();
+	    Set<Vehicule> vehicles = new HashSet<>();
 
 	    String sql = """
 	        SELECT v.idVehicule, v.seatNumber, v.bikeSpotNumber,
@@ -211,7 +211,7 @@ public class RideDAO extends DAO<Ride> {
 	        ps.setInt(1, rideId);
 	        try (ResultSet rs = ps.executeQuery()) {
 	            while (rs.next()) {
-	                Vehicle v = new Vehicle();
+	            		Vehicule v = new Vehicule();
 	                v.setId(rs.getInt("idVehicule"));
 	                v.setSeatNumber(rs.getInt("seatNumber"));
 	                v.setBikeSpotNumber(rs.getInt("bikeSpotNumber"));

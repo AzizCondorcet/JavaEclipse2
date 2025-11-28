@@ -15,7 +15,7 @@ import be.ouagueni.model.Person;
 import be.ouagueni.model.Ride;
 import be.ouagueni.model.Treasurer;
 import be.ouagueni.model.TypeCat;
-import be.ouagueni.model.Vehicle;
+import be.ouagueni.model.Vehicule;
 import be.ouagueni.model.Bike;
 import be.ouagueni.model.Calendar;
 import be.ouagueni.model.Category;
@@ -370,10 +370,10 @@ public class PersonDAO extends DAO<Person> {
 	                                     ResultSet rsVeh = psVeh.executeQuery()) {
 
 	                                    // 🔹 Map pour stocker les véhicules par membre
-	                                    Map<Integer, Vehicle> vehiclesByMember = new HashMap<>();
+	                                    Map<Integer, Vehicule> vehiclesByMember = new HashMap<>();
 
 	                                    while (rsVeh.next()) {
-	                                        Vehicle vehicle = new Vehicle();
+	                                    	   Vehicule vehicle = new Vehicule();
 	                                        vehicle.setId(rsVeh.getInt("idVehicule"));
 	                                        vehicle.setSeatNumber(rsVeh.getInt("seatNumber"));
 	                                        vehicle.setBikeSpotNumber(rsVeh.getInt("bikeSpotNumber"));
@@ -389,7 +389,7 @@ public class PersonDAO extends DAO<Person> {
 
 	                                    // 🔹 MAINTENANT : Associer les véhicules aux Rides
 	                                    for (Ride ride : rides) {
-	                                        Set<Vehicle> vehiclesDuRide = new HashSet<>();
+	                                        Set<Vehicule> vehiclesDuRide = new HashSet<>();
 	                                        
 	                                        if (ride.getInscriptions() != null) {
 	                                            for (Inscription ins : ride.getInscriptions()) {

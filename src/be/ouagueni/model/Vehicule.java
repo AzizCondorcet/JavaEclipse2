@@ -6,9 +6,9 @@ import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
-import be.ouagueni.dao.VehicleDAO;
+import be.ouagueni.dao.VehiculeDAO;
 
-public class Vehicle implements Serializable {
+public class Vehicule implements Serializable {
     private static final long serialVersionUID = 6135289786991520925L;
     private int id;
     private int seatNumber;
@@ -19,15 +19,15 @@ public class Vehicle implements Serializable {
     private Set<Ride> rides = new HashSet<>(); // 1..* : au moins 1 ride
 
     // Constructeurs
-    public Vehicle() {}
+    public Vehicule() {}
     
-    public Vehicle(int id, int seatNumber, int bikeSpotNumber) {
+    public Vehicule(int id, int seatNumber, int bikeSpotNumber) {
         this.id = id; 
         this.seatNumber = seatNumber; 
         this.bikeSpotNumber = bikeSpotNumber;
     }
     
-    public Vehicle(int id, int seatNumber, int bikeSpotNumber, Member driver, Member passenger, Ride ride) {
+    public Vehicule(int id, int seatNumber, int bikeSpotNumber, Member driver, Member passenger, Ride ride) {
         this.id = id;
         this.seatNumber = seatNumber;
         this.bikeSpotNumber = bikeSpotNumber;
@@ -47,7 +47,7 @@ public class Vehicle implements Serializable {
         this.rides.add(ride);
     }
 
-    public Vehicle(int seatNumber2, int bikeSpotNumber2, Member member)
+    public Vehicule(int seatNumber2, int bikeSpotNumber2, Member member)
     {
     		seatNumber = seatNumber2;
     		bikeSpotNumber = bikeSpotNumber2;
@@ -159,7 +159,7 @@ public class Vehicle implements Serializable {
         rides.remove(ride); 
     }
     public boolean create(Connection conn) {
-        VehicleDAO dao = new VehicleDAO(conn);
+        VehiculeDAO dao = new VehiculeDAO(conn);
         return dao.create(this);
     }
     public int getAvailableSeatNumber() {
@@ -181,30 +181,50 @@ public class Vehicle implements Serializable {
     }
   
     public boolean update(Connection conn) throws SQLException {
-        VehicleDAO dao = new VehicleDAO(conn);
+        VehiculeDAO dao = new VehiculeDAO(conn);
         return dao.update(this);
     }
     
     public boolean save(Connection conn) throws SQLException {
-        VehicleDAO dao = new VehicleDAO(conn);
+        VehiculeDAO dao = new VehiculeDAO(conn);
         return dao.save(this); 
     }
 
-    public static Vehicle getOrCreateForDriver(Member driver, Connection conn) throws SQLException {
-        VehicleDAO dao = new VehicleDAO(conn);
-        Vehicle v = dao.findByDriverId(driver.getIdMember());
+    public static Vehicule getOrCreateForDriver(Member driver, Connection conn) throws SQLException {
+        if (driver == null || driver.getIdMember() <= 0) {
+            return null;
+        }
+
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        Vehicule v = dao.findByDriverId(driver.getIdMember());
 
         if (v != null) {
             v.setDriver(driver);
             return v;
-        } else {
-            Vehicle newVehicle = new Vehicle(1, 0, driver); // valeurs par défaut
-            if (dao.create(newVehicle)) {
-                return newVehicle;
-            } else {
-                throw new SQLException("Échec création véhicule");
-            }
         }
+
+        // ON NE CRÉE RIEN ICI → c’est juste une lecture
+        return null;
+    }
+    
+    public Vehicule findByDriverId(int id,Connection conn) throws SQLException {
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        return dao.findByDriverId(id); 
+    }
+    
+    public static Vehicule ensureVehicleExists(Member driver, Connection conn) throws SQLException {
+    		Vehicule v = getOrCreateForDriver(driver, conn); // maintenant safe → retourne null si pas de véhicule
+        if (v != null) {
+            return v;
+        }
+
+        // On crée uniquement quand on poste des disponibilités
+        Vehicule newVehicle = new Vehicule(1, 0, driver);
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        if (dao.create(newVehicle)) {
+            return newVehicle;
+        }
+        throw new SQLException("Échec de la création du véhicule");
     }
     
 }

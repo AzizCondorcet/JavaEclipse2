@@ -10,16 +10,16 @@ import java.util.Set;
 import be.ouagueni.model.Bike;
 import be.ouagueni.model.Member;
 import be.ouagueni.model.Ride;
-import be.ouagueni.model.Vehicle;
+import be.ouagueni.model.Vehicule;
 
-public class VehicleDAO extends DAO<Vehicle> {
-    public VehicleDAO(Connection conn) 
+public class VehiculeDAO extends DAO<Vehicule> {
+    public VehiculeDAO(Connection conn) 
     { 
         super(conn); 
     }
 
     @Override
-    public boolean create(Vehicle vehicle) {
+    public boolean create(Vehicule vehicle) {
         if (vehicle == null || vehicle.getDriver() == null) {
             System.err.println("ERREUR : Véhicule ou conducteur null");
             return false;
@@ -140,12 +140,12 @@ public class VehicleDAO extends DAO<Vehicle> {
     }
 
     @Override
-    public boolean delete(Vehicle obj) {
+    public boolean delete(Vehicule obj) {
         // TODO Auto-generated method stub
         return false;
     }
     @Override
-    public boolean update(Vehicle vehicle) {
+    public boolean update(Vehicule vehicle) {
         if (vehicle.getId() <= 0 || vehicle.getDriver() == null) {
             System.err.println("update() échoué : véhicule ID invalide ou driver null");
             return false;
@@ -264,14 +264,14 @@ public class VehicleDAO extends DAO<Vehicle> {
     }
 
     @Override
-    public Vehicle find(int memberId) 
+    public Vehicule find(int memberId) 
     { 
         String sql = "SELECT idVehicule, seatNumber, bikeSpotNumber FROM Vehicule WHERE idMemberDriver = ?";
         try (PreparedStatement ps = connect.prepareStatement(sql)) {
             ps.setInt(1, memberId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Vehicle v = new Vehicle();
+                		Vehicule v = new Vehicule();
                     v.setId(rs.getInt("idVehicule"));
                     v.setSeatNumber(rs.getInt("seatNumber"));
                     v.setBikeSpotNumber(rs.getInt("bikeSpotNumber"));
@@ -283,7 +283,7 @@ public class VehicleDAO extends DAO<Vehicle> {
         }
         return null;
     }
-    public boolean save(Vehicle vehicle) {
+    public boolean save(Vehicule vehicle) {
         if (vehicle == null || vehicle.getDriver() == null || vehicle.getDriver().getIdMember() <= 0) {
             return false;
         }
@@ -367,13 +367,13 @@ public class VehicleDAO extends DAO<Vehicle> {
             try { connect.setAutoCommit(true); } catch (SQLException e) { e.printStackTrace(); }
         }
     } 
-    public Vehicle findByDriverId(int memberId) throws SQLException {
+    public Vehicule findByDriverId(int memberId) throws SQLException {
         String sql = "SELECT idVehicule, seatNumber, bikeSpotNumber FROM Vehicule WHERE idMemberDriver = ?";
         try (PreparedStatement ps = connect.prepareStatement(sql)) {
             ps.setInt(1, memberId);
             try (ResultSet rs = ps.executeQuery()) {
                 if (rs.next()) {
-                    Vehicle v = new Vehicle();
+                		Vehicule v = new Vehicule();
                     v.setId(rs.getInt("idVehicule"));
                     v.setSeatNumber(rs.getInt("seatNumber"));
                     v.setBikeSpotNumber(rs.getInt("bikeSpotNumber"));

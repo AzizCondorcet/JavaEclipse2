@@ -62,7 +62,7 @@ public class DisponibiliteDialog extends JDialog {
 
         // Chargement véhicule existant
         try {
-            Vehicle v = Vehicle.getOrCreateForDriver(conducteur, model.getConnection());
+        		Vehicule v = Vehicule.getOrCreateForDriver(conducteur, model.getConnection());
             spinPassagers.setValue(v.getSeatNumber());
             spinVelos.setValue(v.getBikeSpotNumber());
         } catch (Exception ignored) {}

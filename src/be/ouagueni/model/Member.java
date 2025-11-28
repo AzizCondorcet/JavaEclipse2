@@ -2,7 +2,6 @@ package be.ouagueni.model;
 
 import java.io.Serializable;
 import java.sql.Connection;
-import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -17,8 +16,8 @@ public class Member extends Person implements Serializable {
     private Set<Inscription> inscriptions = new HashSet<>();
     private Set<Category> categories = new HashSet<>(); 
     private Set<Bike> bikes = new HashSet<>(); 
-    private Vehicle driver;
-    private Set<Vehicle> passengers = new HashSet<>(); 
+    private Vehicule driver;
+    private Set<Vehicule> passengers = new HashSet<>(); 
 
     public Member() { super(); }
     public Member(String name, String firstname) {
@@ -70,20 +69,20 @@ public class Member extends Person implements Serializable {
         if (this.bikes.size() <= 1) {
             throw new IllegalStateException("Un membre doit avoir au moins 1 vélo");}this.bikes.remove(bike); }
     
-    public Vehicle getDriver() {return driver;}
+    public Vehicule getDriver() {return driver;}
     
-    public void setDriver(Vehicle driver) {this.driver = driver;}
+    public void setDriver(Vehicule driver) {this.driver = driver;}
     
-    public Set<Vehicle> getPassengers() { return passengers; }
+    public Set<Vehicule> getPassengers() { return passengers; }
     
-    public void setPassengers(Set<Vehicle> passengers) { 
+    public void setPassengers(Set<Vehicule> passengers) { 
         if (passengers == null) {this.passengers = new HashSet<>();} else {this.passengers = passengers; }}
     
-    public void addPassenger(Vehicle vehicle) { if (vehicle != null) {this.passengers.add(vehicle);}}
+    public void addPassenger(Vehicule vehicle) { if (vehicle != null) {this.passengers.add(vehicle);}}
     
-    public void removePassenger(Vehicle vehicle) { this.passengers.remove(vehicle); }
+    public void removePassenger(Vehicule vehicle) { this.passengers.remove(vehicle); }
     
-    public boolean isPassengerIn(Vehicle vehicle) {return this.passengers.contains(vehicle);}
+    public boolean isPassengerIn(Vehicule vehicle) {return this.passengers.contains(vehicle);}
 
     public double calculateBalance() {
         Set<TypeCat> uniqueTypes = getBikes().stream()

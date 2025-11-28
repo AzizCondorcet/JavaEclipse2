@@ -29,12 +29,10 @@ public class ManagerDashboardPanel extends JPanel {
         // Boutons du haut
         JPanel topButtons = new JPanel(new GridLayout(1, 3, 10, 10));
         JButton btnCreate = new JButton("Créer une Balade");
-        JButton btnViewAll = new JButton("Voir toutes les balades");
         JButton btnOptim = new JButton("Optimisation covoiturage");
         btnOptim.setToolTipText("Voir le plan de covoiturage optimisé");
 
         topButtons.add(btnCreate);
-        topButtons.add(btnViewAll);
         topButtons.add(btnOptim);
 
         JPanel north = new JPanel(new BorderLayout());
@@ -57,7 +55,6 @@ public class ManagerDashboardPanel extends JPanel {
         // Actions
         btnCreate.addActionListener(e -> showCreateBaladePanel());
         btnOptim.addActionListener(e -> ouvrirOptimisationCovoiturage());
-        btnViewAll.addActionListener(e -> JOptionPane.showMessageDialog(this, "Fonctionnalité à venir"));
     }
 
     private JPanel createContentFromModel() {

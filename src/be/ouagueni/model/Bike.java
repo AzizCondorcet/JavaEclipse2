@@ -16,7 +16,7 @@ public class Bike implements Serializable {
     private TypeCat type; // utilisation de l'enum
     private double length;
     private Member owner;
-    private Vehicle vehicle;
+    private Vehicule vehicle;
     private Set<Inscription> inscriptions = new HashSet<>();
 
     public Bike() {}
@@ -84,11 +84,11 @@ public class Bike implements Serializable {
         this.owner = owner;
     }
 
-    public Vehicle getVehicle() {
+    public Vehicule getVehicle() {
         return vehicle;
     }
 
-    public void setVehicle(Vehicle vehicle) {
+    public void setVehicle(Vehicule vehicle) {
         this.vehicle = vehicle;
     }
 

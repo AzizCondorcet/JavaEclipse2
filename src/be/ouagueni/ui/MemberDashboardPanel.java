@@ -104,7 +104,7 @@ public class MemberDashboardPanel extends JPanel {
         panel.add(title, BorderLayout.NORTH);
 
         // ICI : on passe par le MODEL → MVC respecté !
-        Vehicle vehicle = AppModel.getInstance().getVehicleOfMember(currentMember);
+        Vehicule vehicle = AppModel.getInstance().getVehicleOfMember(currentMember);
 
         JPanel content = new JPanel(new GridLayout(0, 1, 10, 10));
         content.setBorder(BorderFactory.createRaisedBevelBorder());

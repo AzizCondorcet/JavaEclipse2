@@ -11,6 +11,7 @@ public class Calendar implements Serializable {
 
 	private static final long serialVersionUID = -2079458858083609116L;
 	private int id;
+	private int ids;
     private Set<Ride> rides = new HashSet<>();
     private Category category;
 

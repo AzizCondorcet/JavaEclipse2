@@ -51,9 +51,6 @@ public class CalendarDAO extends DAO<Calendar> {
 	    return false; // en cas d'erreur
 	}
 	
-
-
-
 	@Override
 	public boolean delete(Calendar obj) {
 		// TODO Auto-generated method stub

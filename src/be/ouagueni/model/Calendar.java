@@ -2,8 +2,6 @@ package be.ouagueni.model;
 
 import java.io.Serializable;
 import java.sql.Connection;
-import java.util.HashSet;
-import java.util.Set;
 
 import be.ouagueni.dao.CalendarDAO;
 
@@ -15,6 +13,12 @@ public class Calendar implements Serializable {
 
     public Calendar() {}
     public Calendar(Category category) {
+        this.id = 0;           
+        this.category = category;
+    }
+    
+    public Calendar(int id, Category category) {
+        this.id = id;
         this.category = category;
     }
 
@@ -29,5 +33,7 @@ public class Calendar implements Serializable {
     		CalendarDAO dao = new CalendarDAO(conn);
         return dao.create(cal);
     }
+    
+    
 }
 

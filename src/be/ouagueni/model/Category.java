@@ -14,12 +14,17 @@ public class Category implements Serializable {
     private TypeCat type;
     private Manager manager;
     private Set<Member> Members = new HashSet<>();
+    // COMPOSITION 
     private Calendar calendar;
 
     public Category() {}
-    public Category(	int id,TypeCat nomCategorie, Manager manager,Calendar calendar) 
-    { this.type = nomCategorie; this.manager = manager; this.calendar=calendar;
-    this.id = id;}
+    public Category(	int id,TypeCat nomCategorie, Manager manager) 
+    {
+	    this.id = id;
+	    	this.type = nomCategorie; 
+	    	this.manager = manager; 
+	    	this.calendar = new Calendar(this);
+    }
 
     public int getid() { return id; }
     public void setid(int id) { this.id = id; }

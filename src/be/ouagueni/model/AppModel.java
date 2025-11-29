@@ -46,50 +46,51 @@ public class AppModel {
     // ===================================================================
 
     public boolean creerBalade(String nbPlacesStr, String lieu, String dateStr,
-            String prixStr, TypeCat categorieChoisie, Manager manager)
-    {
-		try 
-		{
-			if (categorieChoisie == null) return false;
-			if (nbPlacesStr == null || !nbPlacesStr.matches("\\d+")) return false;
-			if (lieu == null || lieu.isEmpty()) return false;
-			if (prixStr == null || !prixStr.matches("\\d+(\\.\\d{1,2})?")) return false;
-			
-			int nbPlaces = Integer.parseInt(nbPlacesStr);
-			double prix = Double.parseDouble(prixStr.replace(",", "."));
-			LocalDateTime dateDepart = LocalDateTime.parse(dateStr,
-			DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-			
-			// Détermination de la catégorie
-			Category category = manager.getCategory();
-			if (category == null) {
-			category = new Category(0, categorieChoisie, null, null);
-			}
-			
-			// Création ou récupération du calendrier
-			Calendar calendar = category.getCalendar();
-			if (calendar == null) {
-			calendar = new Calendar(category);
-			if (!calendar.createCalendar(calendar, getConnection())) {
-			 return false;
-			}
-			category.setCalendar(calendar);
-			}
-			
-			// Création de la balade
-			Ride ride = new Ride(0, lieu, dateDepart, prix, calendar);
-			boolean ok = ride.createRide(ride, getConnection());
-			
-			
-			return ok;
-			
-			} catch (DateTimeParseException e) {
-			return false;
-			} catch (Exception e) {
-			e.printStackTrace();
-			return false;
-			}
-		}
+            String prixStr, TypeCat categorieChoisie, Manager manager) {
+        try {
+            // Validations (inchangées)
+            if (categorieChoisie == null) return false;
+            if (nbPlacesStr == null || !nbPlacesStr.matches("\\d+")) return false;
+            if (lieu == null || lieu.isEmpty()) return false;
+            if (prixStr == null || !prixStr.matches("\\d+(\\.\\d{1,2})?")) return false;
+            
+            int nbPlaces = Integer.parseInt(nbPlacesStr);
+            double prix = Double.parseDouble(prixStr.replace(",", "."));
+            LocalDateTime dateDepart = LocalDateTime.parse(dateStr,
+                    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+            
+            // ✅ CRÉATION CORRECTE de la Category avec composition automatique
+            Category category = new Category(0, categorieChoisie, manager); // 3 paramètres !
+            // Le Calendar est AUTOMATIQUEMENT créé avec id=0 dans le constructeur
+            
+            Connection conn = getConnection();
+            
+            // ✅ 1. Créer d'abord la Category (qui contient le Calendar)
+            if (!category.updateCategory(category, conn)) { // ou createCategory si c'est une nouvelle
+                return false;
+            }
+            
+            // ✅ 2. Le Calendar est déjà créé avec la Category
+            Calendar calendar = category.getCalendar();
+            if (calendar.getid() == 0) { // Si pas encore persisté
+                if (!calendar.createCalendar(calendar, conn)) {
+                    return false;
+                }
+            }
+            
+            // ✅ 3. Créer la Ride
+            Ride ride = new Ride(0, lieu, dateDepart, prix, calendar);
+            boolean ok = ride.createRide(ride, conn);
+            
+            return ok;
+            
+        } catch (DateTimeParseException e) {
+            return false;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
     
     // ===================================================================
     // ================= JFRAME MANAGER DASHBOARD PANEL ===================

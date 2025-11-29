@@ -406,8 +406,6 @@ public class PersonDAO extends DAO<Person> {
 	                                System.out.println("Véhicules chargés et associés aux rides.");
 	                            }
 
-	                            // Finalisation des relations
-	                            if (calendar != null) calendar.setRides(rides);
 	                            if (category != null) manager.setCategory(category);
 
 	                            System.out.println("Manager chargé avec succès – covoiturage prêt !");

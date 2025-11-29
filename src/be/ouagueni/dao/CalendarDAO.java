@@ -44,25 +44,6 @@ public class CalendarDAO extends DAO<Calendar> {
 	                }
 	            }
 	        }
-	
-	        // 3️⃣ Récupérer toutes les rides associées à ce calendrier et les ajouter à la liste du Calendar
-	        String sqlRides = "SELECT idRide, num, startPlace, startDate, fee FROM Ride WHERE idCalendar = ?";
-	        try (PreparedStatement psRides = connect.prepareStatement(sqlRides)) {
-	            psRides.setInt(1, calendar.getid());
-	            try (ResultSet rs = psRides.executeQuery()) {
-	                while (rs.next()) {
-	                    Ride ride = new Ride();
-	                    ride.setId(rs.getInt("idRide"));
-	                    ride.setnum(rs.getInt("num"));
-	                    ride.setStartPlace(rs.getString("startPlace"));
-	                    ride.setStartDate(rs.getTimestamp("startDate").toLocalDateTime());
-	                    ride.setFee(rs.getDouble("fee"));
-	                    ride.setCalendar(calendar);
-	                    calendar.addRide(ride);
-	                }
-	            }
-	        }
-	
 	        return true; // tout s'est bien passé
 	    } catch (Exception e) {
 	        e.printStackTrace();

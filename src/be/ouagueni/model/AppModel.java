@@ -80,9 +80,7 @@ public class AppModel {
 			Ride ride = new Ride(0, lieu, dateDepart, prix, calendar);
 			boolean ok = ride.createRide(ride, getConnection());
 			
-			if (ok) {
-			calendar.addRide(ride);
-			}
+			
 			return ok;
 			
 			} catch (DateTimeParseException e) {
@@ -99,13 +97,17 @@ public class AppModel {
 
     public List<Ride> getRidesDuManager(Manager manager) {
         Category cat = manager.getCategory();
-        if (cat == null || cat.getCalendar() == null || cat.getCalendar().getRides() == null) {
-            return List.of(); // liste vide immutable
+        if (cat == null || cat.getCalendar() == null) {
+            return List.of();
         }
-        return cat.getCalendar().getRides()
-                  .stream()
-                  .sorted(Comparator.comparing(Ride::getStartDate))
-                  .toList();
+
+        // ON UTILISE LA MÉTHODE QUI CHARGE TOUT (inscriptions incluses)
+        return Ride.allRides(conn).stream()
+                .filter(ride -> ride.getCalendar() != null && 
+                               ride.getCalendar().getCategory() != null &&
+                               ride.getCalendar().getCategory().equals(cat))
+                .sorted(Comparator.comparing(Ride::getStartDate))
+                .toList();
     }
 
     public List<Ride> getRidesAvecInscriptions(Manager manager) {
@@ -126,23 +128,10 @@ public class AppModel {
      * Utilisé par le manager avant l'optimisation
      */
     public Ride rafraichirRideDepuisBase(int rideId) {
-        System.out.println("Rafraîchissement complet de la sortie ID " + rideId + " depuis la base...");
-
-        Set<Ride> rides = Ride.allRides(conn);
-        Ride ride = rides.stream()
-                .filter(r -> r.getId() == rideId)
-                .findFirst()
-                .orElse(null);
-
-        if (ride != null) {
-            System.out.println("Sortie " + ride.getStartPlace() + " rechargée : " 
-                + ride.getVehicles().size() + " véhicule(s), "
-                + ride.getInscriptions().size() + " inscription(s)");
-        } else {
-            System.out.println("Sortie non trouvée !");
-        }
-
-        return ride;
+    return Ride.allRides(conn).stream()
+            .filter(r -> r.getId() == rideId)
+            .findFirst()
+            .orElse(null);
     }
     
     // ===================================================================

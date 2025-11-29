@@ -77,7 +77,7 @@ public class ClubFrame extends JFrame {
     }
 
     public void showManagerDashboard(Manager manager) {
-        ManagerDashboardPanel panel = new ManagerDashboardPanel(this, manager, conn);
+    		ManagerDashboardPanel panel = new ManagerDashboardPanel(this, manager);
         mainPanel.add(panel, "managerDashboard");
         showPanel("managerDashboard");
     }

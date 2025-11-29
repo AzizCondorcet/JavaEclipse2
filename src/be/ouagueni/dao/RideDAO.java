@@ -60,10 +60,31 @@ public class RideDAO extends DAO<Ride> {
 	}
 
 	@Override
-	public Ride find(int id) {
-		// TODO Auto-generated method stub
-		return null;
-	}
+    public Ride find(int id) {
+        String sql = """
+            SELECT r.idRide, r.num, r.startPlace, r.startDate, r.fee
+            FROM Ride r
+            WHERE r.idRide = ?
+            """;
+
+        try (PreparedStatement ps = connect.prepareStatement(sql)) {
+            ps.setInt(1, id);
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    Ride ride = new Ride();
+                    ride.setId(rs.getInt("idRide"));
+                    ride.setnum(rs.getInt("num"));
+                    ride.setStartPlace(rs.getString("startPlace"));
+                    ride.setStartDate(rs.getTimestamp("startDate").toLocalDateTime());
+                    ride.setFee(rs.getDouble("fee"));
+                    return ride;
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return null; // si non trouvé
+    }
 	
 	public Set<Ride> getAllRides() {
 	    Set<Ride> rides = new HashSet<>();

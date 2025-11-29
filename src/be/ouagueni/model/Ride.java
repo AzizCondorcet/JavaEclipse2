@@ -67,19 +67,18 @@ public class Ride implements Serializable
     }
     
     @Override
-    public String toString() 
-    {
-        return "Ride{" +
-                "id=" + id +
-                ", num=" + num +
-                ", startPlace='" + startPlace + '\'' +
-                ", startDate=" + startDate +
-                ", fee=" + fee +
-                ", calendarId=" + (calendar != null ? calendar.getid() : "null") +
-                ", totalInscriptions=" + (inscriptions != null ? inscriptions.size() : 0) +
-                ", totalVehicles=" + (vehicles != null ? vehicles.size() : 0) +
-                '}';
+    public String toString() {
+        // Format clair et lisible pour le trésorier
+        String date = startDate != null 
+            ? startDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+            : "Date inconnue";
+        
+        return String.format("%s → %s €  (%s)",
+                startPlace != null ? startPlace : "Lieu inconnu",
+                fee,
+                date);
     }
+    
     public boolean createRide(Ride ride,Connection conn) 
     {
     		RideDAO dao = new RideDAO(conn);
@@ -177,16 +176,14 @@ public class Ride implements Serializable
     public boolean equals(Object o) {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
-        Member member = (Member) o;
-        return this.id != 0 && this.id == member.id;
+        Ride ride = (Ride) o;
+        return id == ride.id;
     }
 
     @Override
     public int hashCode() {
         return Integer.hashCode(id);
     }
-
-
     
 }
 

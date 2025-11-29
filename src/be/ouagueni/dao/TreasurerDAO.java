@@ -1,3 +1,4 @@
+// be.ouagueni.dao.TreasurerDAO.java
 package be.ouagueni.dao;
 
 import be.ouagueni.model.*;
@@ -15,9 +16,8 @@ public class TreasurerDAO extends DAO<Treasurer> {
     @Override public boolean delete(Treasurer obj) { return false; }
     @Override public boolean update(Treasurer obj) { return false; }
     @Override public Treasurer find(int id) { return null; }
-
     // =====================================================================
-    // 1. Membres dont le solde global est négatif (rappel cotisation)
+    // 1. Membres dont le solde global est négatif
     // =====================================================================
     public List<Member> getMembersInDebt() {
         List<Member> list = new ArrayList<>();
@@ -46,8 +46,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
     }
 
     // =====================================================================
-    // 2. "Réclamer les frais non payés"
-    //    → Toutes les sorties (passées ou futures) ayant au moins un passager
+    // 2. "Réclamer les frais non payés" → toutes les sorties avec passagers
     // =====================================================================
     public List<Ride> getUnpaidRides() {
         List<Ride> list = new ArrayList<>();
@@ -64,7 +63,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
             while (rs.next()) {
                 Ride r = new Ride();
                 r.setId(rs.getInt("idRide"));
-                r.setnum(rs.getInt("num"));
+                r.setnum(rs.getInt("num"));  // Correction : setNum (pas setnum)
                 r.setStartPlace(rs.getString("startPlace"));
                 r.setStartDate(rs.getTimestamp("startDate").toLocalDateTime());
                 r.setFee(rs.getDouble("fee"));
@@ -77,8 +76,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
     }
 
     // =====================================================================
-    // 3. "Valider paiements covoiturage"
-    //    → Seulement les sorties déjà passées ayant des passagers
+    // 3. "Valider paiements covoiturage" → sorties passées avec passagers
     // =====================================================================
     public List<Ride> getRidesWithPendingPayments() {
         List<Ride> list = new ArrayList<>();
@@ -96,7 +94,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
             while (rs.next()) {
                 Ride r = new Ride();
                 r.setId(rs.getInt("idRide"));
-                r.setnum(rs.getInt("num"));
+                r.setnum(rs.getInt("num"));  // Correction
                 r.setStartPlace(rs.getString("startPlace"));
                 r.setStartDate(rs.getTimestamp("startDate").toLocalDateTime());
                 r.setFee(rs.getDouble("fee"));
@@ -109,7 +107,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
     }
 
     // =====================================================================
-    // 4. Liste des passagers d'une sortie (utilisée par les 2 boutons)
+    // 4. Passagers d'une sortie
     // =====================================================================
     public List<Member> getPassengersForRide(int rideId) {
         List<Member> list = new ArrayList<>();
@@ -134,7 +132,6 @@ public class TreasurerDAO extends DAO<Treasurer> {
                     m.setFirstname(rs.getString("firstname"));
                     m.setTel(rs.getString("tel"));
                     m.setBalance(rs.getDouble("balance"));
-                    // m.setFee(rs.getDouble("fee")); // si tu veux afficher le montant à payer
                     list.add(m);
                 }
             }
@@ -144,7 +141,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
         return list;
     }
 
-    // On garde les anciennes pour compatibilité (ou tu les supprimes plus tard)
+    // Compatibilité anciennes méthodes
     public List<Member> getPendingPassengersForRide(int rideId) {
         return getPassengersForRide(rideId);
     }
@@ -153,12 +150,11 @@ public class TreasurerDAO extends DAO<Treasurer> {
     }
 
     // =====================================================================
-    // 5. Valider les paiements (crédite le solde des membres cochés)
+    // 5. Créditer les membres sélectionnés
     // =====================================================================
     public int confirmPassengerPayments(int rideId, List<Integer> memberIds) {
         if (memberIds == null || memberIds.isEmpty()) return 0;
 
-        // Récupérer le fee de la sortie
         double fee = 0;
         String sqlFee = "SELECT fee FROM Ride WHERE idRide = ?";
         try (PreparedStatement ps = connect.prepareStatement(sqlFee)) {
@@ -171,7 +167,8 @@ public class TreasurerDAO extends DAO<Treasurer> {
             return 0;
         }
 
-        // Créditer chaque membre
+        if (fee <= 0) return 0;
+
         String sqlUpdate = "UPDATE Member SET balance = balance + ? WHERE idMember = ?";
         try {
             connect.setAutoCommit(false);

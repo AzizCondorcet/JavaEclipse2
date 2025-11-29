@@ -1,43 +1,37 @@
-// be.ouagueni.model.Treasurer.java
 package be.ouagueni.model;
 
 import be.ouagueni.dao.TreasurerDAO;
+import javax.swing.*;
 import java.sql.Connection;
 import java.util.List;
 
 public class Treasurer extends Person {
     private static final long serialVersionUID = 1L;
 
+    // ==================================================================
+    // Constructeurs
+    // ==================================================================
     public Treasurer() { super(); }
+
     public Treasurer(int id, String name, String firstname, String tel, String password) {
         super(id, name, firstname, tel, password);
     }
 
     // ==================================================================
-    // 1. RAPPEL DE PAIEMENT
+    // 1. ENVOYER RAPPEL DE PAIEMENT → sendReminderLetter()
     // ==================================================================
-    public record ReminderResult(
-            List<Member> debtors,
-            double totalDue,
-            String previewMessage,      // Affiché dans la boîte de confirmation
-            String confirmationMessage  // Affiché après "Oui"
-    ) {}
-
-    public ReminderResult prepareReminderLetter(Connection conn) {
+    public void sendReminderLetter(Connection conn) {
         List<Member> debtors = new TreasurerDAO(conn).getMembersInDebt();
 
         if (debtors.isEmpty()) {
-            return new ReminderResult(
-                    List.of(),
-                    0.0,
-                    "Tous les membres sont à jour !",
-                    "Aucun rappel à envoyer."
-            );
+            JOptionPane.showMessageDialog(null,
+                "Tous les membres sont à jour !",
+                "Parfait",
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
         }
 
-        double total = debtors.stream()
-                .mapToDouble(m -> -m.getBalance())
-                .sum();
+        double total = debtors.stream().mapToDouble(m -> -m.getBalance()).sum();
 
         StringBuilder preview = new StringBuilder("<html><b>Membres en dette :</b><br><br>");
         for (Member m : debtors) {
@@ -46,72 +40,143 @@ public class Treasurer extends Person {
         }
         preview.append("<br><b>Total dû : ").append(String.format("%.2f €", total)).append("</b></html>");
 
-        String confirmation = debtors.size() == 1
+        int choice = JOptionPane.showConfirmDialog(null,
+            preview.toString(),
+            "Envoyer les rappels ?",
+            JOptionPane.YES_NO_OPTION,
+            JOptionPane.QUESTION_MESSAGE);
+
+        if (choice == JOptionPane.YES_OPTION) {
+            String msg = debtors.size() == 1
                 ? "1 personne va recevoir un mail de rappel."
                 : debtors.size() + " personnes vont recevoir un mail de rappel.";
 
-        return new ReminderResult(debtors, total, preview.toString(), confirmation);
-    }
-
-    // ==================================================================
-    // 2. VALIDER PAIEMENTS COVOITURAGE
-    // ==================================================================
-    public record PaymentValidationResult(int updatedCount, String message) {}
-
-    public PaymentValidationResult validateDriverPayments(Connection conn) {
-        TreasurerDAO dao = new TreasurerDAO(conn);
-        List<Ride> pendingRides = dao.getRidesWithPendingPayments();
-
-        if (pendingRides.isEmpty()) {
-            return new PaymentValidationResult(0, "Aucun paiement à valider ou déjà tout réglé !");
+            JOptionPane.showMessageDialog(null, msg, "Rappels envoyés", JOptionPane.INFORMATION_MESSAGE);
         }
-
-        Ride ride = pendingRides.get(0);
-        List<Member> passengers = dao.getPendingPassengersForRide(ride.getId());
-        List<Integer> ids = passengers.stream()
-                .map(Member::getIdMember)
-                .toList();
-
-        int updated = dao.confirmPassengerPayments(ride.getId(), ids);
-
-        String message = updated == 1
-                ? "1 paiement validé avec succès !"
-                : updated + " paiements validés avec succès !";
-
-        return new PaymentValidationResult(updated, message);
     }
 
     // ==================================================================
-    // 3. RÉCLAMER LES FRAIS NON PAYÉS
+    // 2. VALIDER PAIEMENTS COVOITURAGE → payDriver()
     // ==================================================================
-    public record ClaimResult(
-        Ride ride,
-        List<Member> unpaidMembers,
-        String formattedMessage
-    ) {}
-
-    public ClaimResult prepareClaimFee(Connection conn) {
-        TreasurerDAO dao = new TreasurerDAO(conn);
-        List<Ride> rides = dao.getUnpaidRides();
+    public void payDriver(Connection conn) {
+        List<Ride> rides = new TreasurerDAO(conn).getRidesWithPendingPayments();
 
         if (rides.isEmpty()) {
-            return new ClaimResult(null, List.of(), "Aucune dette en cours.");
+            JOptionPane.showMessageDialog(null,
+                "Aucune sortie passée avec des passagers à valider.",
+                "Information",
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
         }
 
-        Ride ride = rides.get(0);
-        List<Member> unpaid = dao.getUnpaidMembersForRide(ride.getId());
+        // Choix de la sortie
+        Ride selected = (Ride) JOptionPane.showInputDialog(
+            null,
+            "Sélectionnez la sortie à traiter :",
+            "Valider paiements covoiturage",
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            rides.toArray(),
+            rides.get(0)
+        );
+
+        if (selected == null) return;
+
+        List<Member> passengers = new TreasurerDAO(conn).getPassengersForRide(selected.getId());
+
+        if (passengers.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Aucun passager inscrit.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        // Liste avec cases à cocher
+        JList<Member> list = new JList<>(passengers.toArray(new Member[0]));
+        list.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
+        list.setCellRenderer((jlist, m, index, isSel, hasFocus) -> {
+            String txt = String.format("%s %s → Solde : %.2f €", m.getFirstname(), m.getName(), m.getBalance());
+            JLabel lbl = new JLabel(txt);
+            if (isSel) {
+                lbl.setBackground(new java.awt.Color(184, 207, 229));
+                lbl.setOpaque(true);
+            }
+            return lbl;
+        });
+
+        JScrollPane scroll = new JScrollPane(list);
+        scroll.setPreferredSize(new java.awt.Dimension(500, 350));
+
+        int option = JOptionPane.showConfirmDialog(null, scroll,
+            "Cochez les membres qui ont payé – " + selected.getStartPlace(),
+            JOptionPane.OK_CANCEL_OPTION);
+
+        if (option != JOptionPane.OK_OPTION) return;
+
+        List<Integer> selectedIds = list.getSelectedValuesList()
+            .stream()
+            .map(Member::getIdMember)
+            .toList();
+
+        if (selectedIds.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Aucun membre coché.", "Attention", JOptionPane.WARNING_MESSAGE);
+            return;
+        }
+
+        int updated = new TreasurerDAO(conn).confirmPassengerPayments(selected.getId(), selectedIds);
+
+        String message = updated == 1
+            ? "1 paiement validé avec succès !"
+            : updated + " paiements validés avec succès !";
+
+        JOptionPane.showMessageDialog(null, message, "Succès", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    // ==================================================================
+    // 3. RÉCLAMER LES FRAIS → claimFee()
+    // ==================================================================
+    public void claimFee(Connection conn) {
+        List<Ride> rides = new TreasurerDAO(conn).getUnpaidRides();
+
+        if (rides.isEmpty()) {
+            JOptionPane.showMessageDialog(null,
+                "Aucune sortie avec passagers.",
+                "Information",
+                JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
+
+        Ride selected = (Ride) JOptionPane.showInputDialog(
+            null,
+            "Sélectionnez la sortie à réclamer :",
+            "Réclamer les frais",
+            JOptionPane.QUESTION_MESSAGE,
+            null,
+            rides.toArray(),
+            rides.get(0)
+        );
+
+        if (selected == null) return;
+
+        List<Member> passengers = new TreasurerDAO(conn).getPassengersForRide(selected.getId());
+
+        if (passengers.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Aucun passager inscrit.", "Info", JOptionPane.INFORMATION_MESSAGE);
+            return;
+        }
 
         StringBuilder msg = new StringBuilder("<html><b>Dettes pour la sortie :</b> ")
-                .append(ride.getStartPlace())
-                .append(" (")
-                .append(ride.getStartDate().toLocalDate())
-                .append(")<br><br>");
+            .append(selected.getStartPlace())
+            .append(" (")
+            .append(selected.getStartDate().toLocalDate())
+            .append(")<br><br>");
 
-        for (Member m : unpaid) {
+        for (Member m : passengers) {
             msg.append("• ").append(m.getFirstname()).append(" ").append(m.getName()).append("<br>");
         }
         msg.append("</html>");
 
-        return new ClaimResult(ride, unpaid, msg.toString());
+        JOptionPane.showMessageDialog(null,
+            msg.toString(),
+            "Membres à réclamer",
+            JOptionPane.WARNING_MESSAGE);
     }
 }

@@ -36,7 +36,7 @@ public class ManagerDashboardPanel extends JPanel {
         btnCreate.setFont(new Font("Segoe UI", Font.BOLD, 18));
         btnOptim.setFont(new Font("Segoe UI", Font.BOLD, 18));
 
-        topButtons.add(new JLabel()); // espace gauche
+        topButtons.add(new JLabel()); 
         topButtons.add(btnCreate);
         topButtons.add(btnOptim);
 
@@ -154,14 +154,13 @@ public class ManagerDashboardPanel extends JPanel {
     }
 
     private void showOptimisationDialog() {
-    // ✅ FILTRER SEULEMENT BALADES À VENIR (via AppModel)
     List<Ride> ridesFutures = AppModel.getInstance().getRidesDuManager(manager).stream()
         .filter(ride -> !AppModel.getInstance().isRideTerminee(ride))  // ✅ SEULEMENT À VENIR
         .filter(r -> r.getInscriptions() != null && !r.getInscriptions().isEmpty())
         .toList();
 
     if (ridesFutures.isEmpty()) {
-        // ✅ MESSAGE AVEC STATUS
+        //MESSAGE AVEC STATUS
         String message = "Aucune balade à optimiser.\n\n" +
             "• Toutes vos balades sont terminées 🟢\n" +
             "• Ou n'ont pas d'inscriptions";
@@ -170,7 +169,7 @@ public class ManagerDashboardPanel extends JPanel {
         return;
     }
 
-    // ✅ LISTE AVEC STATUS VISUEL
+    //LISTE AVEC STATUS VISUEL
     JDialog dialog = new JDialog(parentFrame, "Optimisation Covoiturage – " + manager.getFirstname(), true);
     dialog.setSize(1100, 700);
     dialog.setLocationRelativeTo(this);
@@ -219,7 +218,7 @@ public class ManagerDashboardPanel extends JPanel {
 
     JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
         new JScrollPane(listRides), new JScrollPane(rapportArea));
-    split.setDividerLocation(450);  // ✅ Plus large pour status
+    split.setDividerLocation(450);  //Plus large pour status
 
     JButton close = new JButton("Fermer");
     close.addActionListener(e -> dialog.dispose());

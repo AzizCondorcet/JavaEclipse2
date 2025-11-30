@@ -6,7 +6,6 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 
 import be.ouagueni.model.Calendar;
-import be.ouagueni.model.Ride;
 
 public class CalendarDAO extends DAO<Calendar> {
     public CalendarDAO(Connection conn) { super(conn); }
@@ -15,19 +14,19 @@ public class CalendarDAO extends DAO<Calendar> {
 	    try {
 	        System.out.println("calendar.getCategory().getid(): " + calendar.getCategory().getid());
 	
-	        // 1️⃣ Vérifier si un calendrier existe déjà pour cette catégorie
+	        // Vérifier si un calendrier existe pour cette catégorie
 	        String sqlCheck = "SELECT idCalendar FROM Calendar WHERE idCategory = ?";
 	        try (PreparedStatement psCheck = connect.prepareStatement(sqlCheck)) {
 	            psCheck.setInt(1, calendar.getCategory().getid());
 	            try (ResultSet rs = psCheck.executeQuery()) {
 	                if (rs.next()) {
-	                    // Calendrier existant trouvé, on met à jour l'objet avec l'ID
+	                    // Calendrier existant trouvé, on met a jour
 	                    calendar.setid(rs.getInt("idCalendar"));
 	                }
 	            }
 	        }
 	
-	        // 2️⃣ Aucun calendrier existant, on insère un nouveau si l'ID n'est pas déjà défini
+	        // 2️⃣ Aucun calendrier existant
 	        if (calendar.getid() == 0) {
 	            String sqlInsert = "INSERT INTO Calendar (idCategory) VALUES (?)";
 	            try (PreparedStatement psInsert = connect.prepareStatement(sqlInsert, Statement.RETURN_GENERATED_KEYS)) {
@@ -36,19 +35,19 @@ public class CalendarDAO extends DAO<Calendar> {
 	                if (rows > 0) {
 	                    try (ResultSet rsKeys = psInsert.getGeneratedKeys()) {
 	                        if (rsKeys.next()) {
-	                            calendar.setid(rsKeys.getInt(1)); // récupère l'ID auto-généré
+	                            calendar.setid(rsKeys.getInt(1)); // récupère l'ID 
 	                        }
 	                    }
 	                } else {
-	                    return false; // insertion échouée
+	                    return false; 
 	                }
 	            }
 	        }
-	        return true; // tout s'est bien passé
+	        return true; // tout est ok
 	    } catch (Exception e) {
 	        e.printStackTrace();
 	    }
-	    return false; // en cas d'erreur
+	    return false; 
 	}
 	
 	@Override

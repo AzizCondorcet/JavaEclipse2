@@ -6,7 +6,6 @@ import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.sql.Connection;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -15,8 +14,6 @@ public class WelcomePanel extends JPanel {
     private final ClubFrame parentFrame;
     private final Connection conn;
     private final AppModel model = AppModel.getInstance();
-
-    // Important : on garde une référence au JTabbedPane principal pour pouvoir changer d'onglet
     private JTabbedPane tabbedPane;
 
     public WelcomePanel(ClubFrame parentFrame, Connection conn) {
@@ -70,16 +67,29 @@ public class WelcomePanel extends JPanel {
 
         JButton btnLogin = new JButton("Se connecter");
         btnLogin.setFont(new Font("Segoe UI", Font.BOLD, 16));
-        btnLogin.setBackground(new Color(0, 120, 215));
+        btnLogin.setBackground(new Color(41, 128, 185));     
         btnLogin.setForeground(Color.WHITE);
+        btnLogin.setFocusPainted(false);
+        btnLogin.setBorderPainted(false);                   
 
         JButton btnRegister = new JButton("Créer un compte");
+        btnRegister.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnRegister.setBackground(new Color(46, 204, 113));  
+        btnRegister.setForeground(Color.WHITE);
+        btnRegister.setFocusPainted(false);
+        btnRegister.setBorderPainted(false);
+
         JButton btnQuit = new JButton("Quitter");
+        btnQuit.setFont(new Font("Segoe UI", Font.BOLD, 16));
+        btnQuit.setBackground(new Color(231, 76, 60));      
+        btnQuit.setForeground(Color.WHITE);
+        btnQuit.setFocusPainted(false);
+        btnQuit.setBorderPainted(false);
 
         gbc.gridx = 0; gbc.gridy++;
         gbc.gridwidth = 2;
         gbc.anchor = GridBagConstraints.CENTER;
-        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 10));
+        JPanel btnPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 20, 15));
         btnPanel.add(btnLogin);
         btnPanel.add(btnRegister);
         btnPanel.add(btnQuit);

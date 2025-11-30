@@ -4,12 +4,13 @@ import be.ouagueni.model.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.sql.Connection;
 import java.util.List;
 
 public class DisponibiliteDialog extends JDialog {
 
-    private final Member conducteur;
+
+	private static final long serialVersionUID = 7931304451599476390L;
+	private final Member conducteur;
     private final AppModel model = AppModel.getInstance();
 
     public DisponibiliteDialog(ClubFrame parent, Member conducteur) {
@@ -92,7 +93,6 @@ public class DisponibiliteDialog extends JDialog {
 
             Ride ride = ridesCompatibles.get(idx);
 
-            // NOUVEAU : Interdire de poster des dispos si déjà inscrit comme passager
             boolean dejaPassager = ride.getInscriptions().stream()
                     .anyMatch(ins -> ins.getMember() != null &&
                             ins.getMember().equals(conducteur) &&
@@ -124,7 +124,6 @@ public class DisponibiliteDialog extends JDialog {
             }
         });
 
-        // Assemblage
         JPanel main = new JPanel(new GridLayout(1, 2, 20, 0));
         main.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
         main.add(left);

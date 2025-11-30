@@ -21,10 +21,9 @@ public enum TypeCat {
         for (TypeCat type : values()) {
             if (type.getId() == id) return type;
         }
-        return null; // ou throw new IllegalArgumentException("Type inconnu: " + id);
+        return null; 
     }
 
-    // Conversion TypeCat -> int (pour DAO)
     public int toInt() {
         return this.id;
     }

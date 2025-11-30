@@ -14,7 +14,7 @@ public class MemberDAO extends DAO<Member> {
         String sqlPerson = "INSERT INTO Person (namesPers, firstname, tel, psw) VALUES (?, ?, ?, ?)";
         String sqlMember = "INSERT INTO Member (idPerson, balance) VALUES (?, ?)";
         String sqlCat    = "INSERT INTO Category_Member (IDMember, IDCategory) VALUES (?, ?)";
-        String sqlBike   = "INSERT INTO Bike (weight, bikeType, length, idMember, idVehicle) VALUES (?, ?, ?, ?, ?)";
+        String sqlBike   = "INSERT INTO Bike (weight, bikeType, length, idMember, idVehicule) VALUES (?, ?, ?, ?, ?)";
 
         int idMember = 0;
 
@@ -89,6 +89,9 @@ public class MemberDAO extends DAO<Member> {
 
     @Override
     public boolean delete(Member obj) { return false; }
+    
+    @Override
+    public Member find(int id) { return null; }
 
     @Override
     public boolean update(Member member) {
@@ -99,13 +102,13 @@ public class MemberDAO extends DAO<Member> {
         try {
             connect.setAutoCommit(false);
 
-            // 1. Supprimer toutes les anciennes associations catégorie/membre
+            //Supprimer toutes les anciennes associa
             try (PreparedStatement ps = connect.prepareStatement(deleteCats)) {
                 ps.setInt(1, member.getIdMember());
                 ps.executeUpdate();
             }
 
-            // 2. Réinsérer les catégories actuelles du membre
+            //Réinsérer les catégories 
             for (Category cat : member.getCategories()) {
                 try (PreparedStatement ps = connect.prepareStatement(insertCat)) {
                     ps.setInt(1, member.getIdMember());
@@ -132,6 +135,4 @@ public class MemberDAO extends DAO<Member> {
             try { connect.setAutoCommit(true); } catch (SQLException ignored) {}
         }
     }
-    @Override
-    public Member find(int id) { return null; }
 }

@@ -58,26 +58,19 @@ public class AppModel {
             double prix = Double.parseDouble(prixStr.replace(",", "."));
             LocalDateTime dateDepart = LocalDateTime.parse(dateStr,
                     DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
-            
-            // ✅ CRÉATION CORRECTE de la Category avec composition automatique
-            Category category = new Category(0, categorieChoisie, manager); // 3 paramètres !
-            // Le Calendar est AUTOMATIQUEMENT créé avec id=0 dans le constructeur
+            Category category = new Category(0, categorieChoisie, manager); 
             
             Connection conn = getConnection();
-            
-            // ✅ 1. Créer d'abord la Category (qui contient le Calendar)
-            if (!category.updateCategory(category, conn)) { // ou createCategory si c'est une nouvelle
+            if (!category.updateCategory(category, conn)) { 
                 return false;
             }
-            
-            // ✅ 2. Le Calendar est déjà créé avec la Category
+          
             Calendar calendar = category.getCalendar();
             if (!calendar.createCalendar(conn)) 
             {
                 return false;
             }
             
-            // ✅ 3. Créer la Ride
             Ride ride = new Ride(0, lieu, dateDepart, prix, calendar);
             boolean ok = ride.createRide(conn);
             
@@ -101,7 +94,7 @@ public class AppModel {
             return List.of();
         }
 
-        // ON UTILISE LA MÉTHODE QUI CHARGE TOUT (inscriptions incluses)
+        // ON UTILISE LA MÉTHODE QUI CHARGE TOUT
         return Ride.allRides(conn).stream()
                 .filter(ride -> ride.getCalendar() != null && 
                                ride.getCalendar().getCategory() != null &&
@@ -197,15 +190,15 @@ public class AppModel {
     }
 
     public List<Ride> getRidesCompatiblesConducteur(Member membre) {
-        // Récupère toutes les sorties (existantes)
+        // Récupère toutes les sorties 
         Set<Ride> allRides = Ride.allRides(conn);
 
-        // Récupère les types de catégories pratiquées par le membre via ses vélos
+        // Récupère les types de catégories
         Set<TypeCat> categoriesMembre = membre.getBikes().stream()
                 .map(Bike::getType)
                 .collect(Collectors.toSet());
 
-        // Si le membre n'a aucun vélo enregistré → pas de sortie compatible
+        // Si le membre n'a aucun vélo enregistré
         if (categoriesMembre.isEmpty()) {
             return List.of();
         }
@@ -215,9 +208,7 @@ public class AppModel {
         return allRides.stream()
                 .filter(ride -> ride.getCalendar() != null &&
                         categoriesMembre.contains(ride.getCalendar().getCategory().getNomCategorie()))
-                // NOUVEAU : on garde seulement les sorties d'aujourd'hui ou dans le futur
                 .filter(ride -> !ride.getStartDate().toLocalDate().isBefore(aujourdHui))
-                // Tri par date croissante (la plus proche en premier)
                 .sorted(Comparator.comparing(Ride::getStartDate))
                 .collect(Collectors.toList());
     }
@@ -240,11 +231,9 @@ public class AppModel {
                 return new ReservationResult(false, "Vous devez sélectionner un vélo compatible.");
             }
 
-            // 2. Vérifier s'il est déjà conducteur (pour le message)
             boolean estConducteur = ride.getVehicles().stream()
                     .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(membre));
 
-            // 3. Rechercher un véhicule disponible (chez un AUTRE conducteur)
             int besoinVelos = veutTransporterVelo ? 1 : 0;
             Vehicule vehicle = ride.findAvailableVehicle(membre, veutEtrePassager, besoinVelos, conn);
 
@@ -275,7 +264,6 @@ public class AppModel {
             boolean inscriptionCreee = inscription.create(conn);
 
             if (!inscriptionCreee) {
-                // LE DAO A REFUSÉ → c'est un doublon (ou erreur grave)
                 return new ReservationResult(false,
                     "<html><center><h3>Vous êtes déjà inscrit à cette sortie</h3></center><br>" +
                     "<b>Sortie :</b> " + ride.getStartPlace() + "<br>" +
@@ -285,25 +273,25 @@ public class AppModel {
                     "<i>Pour modifier votre inscription,<br>contactez votre conducteur ou le manager.</i></html>");
             }
 
-            // 6. Inscription acceptée → on met à jour les objets en mémoire
+            //Inscription acceptée 
             ride.addInscription(inscription);
             membre.addInscription(inscription);
             if (veutEtrePassager) vehicle.addPassenger(membre);
             if (veutTransporterVelo && velo != null) vehicle.addBike(velo);
 
-            // 7. Débit du forfait
+            //Débit du forfait
             double nouveauSolde = Math.round((membre.getBalance() - ride.getFee()) * 100.0) / 100.0;
             membre.setBalance(nouveauSolde);
 
-            // 8. Sauvegarde finale
+            //Sauvegarde finale
             boolean sauvegardeOk = membre.update(conn) && vehicle.update(conn);
 
-            if (!sauvegardeOk) {
-                // Très rare, mais on gère quand même
+            if (!sauvegardeOk)
+            {
                 return new ReservationResult(false, "Réservation enregistrée mais échec de mise à jour du solde/véhicule.");
             }
 
-            // 9. Mise à jour du véhicule dans la liste de la ride (pour cohérence mémoire)
+            // Mise à jour du véhicule dans la liste de la ride
             ride.getVehicles().removeIf(v -> v.getId() == vehicle.getId());
             ride.getVehicles().add(vehicle);
 
@@ -342,7 +330,7 @@ public class AppModel {
     public boolean payerCotisation(Member membre, double montantPaye) {
 
         if (cotisationEstPayee(membre)) {
-            return false; // déjà payé
+            return false; 
         }
 
         double due = calculerCotisationDue(membre);
@@ -351,14 +339,15 @@ public class AppModel {
             return false; // montant insuffisant
         }
 
-        // débiter le solde
+        //débiter le solde
         double nouveauSolde =
                 Math.round((membre.getBalance() - montantPaye) * 100.0) / 100.0;
         membre.setBalance(nouveauSolde);
         membre.update(conn);
 
-        // marquer comme payée
+        //marquer comme payée
         cotisationsPayees.put(membre.getId(), true);
+        
 
         return true;
     }
@@ -394,10 +383,10 @@ public class AppModel {
             this.conducteur = conducteur;
         }
     }
-    // Concerant le Bike du membre, se référer à BikeDialog.java
+    // Concerant le Bike du membre
     public boolean supprimerVeloDeMembre(Member membre, Bike bike) {
         try {
-            // Optionnel : vérifier que le vélo appartient bien au membre
+            //vérifier que le vélo appartient bien au membre
             if (!membre.getBikes().contains(bike)) {
                 return false;
             }
@@ -405,8 +394,6 @@ public class AppModel {
             boolean deleted = bike.delete(conn);
             if (deleted) {
                 membre.getBikes().remove(bike);
-                // Optionnel : nettoyer les inscriptions qui utilisaient ce vélo ?
-                // (tu peux ajouter ça plus tard si besoin)
             }
             return deleted;
         } catch (Exception e) {
@@ -462,7 +449,7 @@ public class AppModel {
     // ===================================================================
 
     /**
-     * Version "propre" de la réservation : toute la logique + messages d'erreur riches
+     * Version "propre" de la réservation
      */
     public ReservationResult reserverBaladeAvecVerificationComplete(Member membre,
         Ride ride,
@@ -470,7 +457,7 @@ public class AppModel {
         boolean veutTransporterVelo,
         Bike veloChoisi) {
 
-        // 1. Vérifications simples
+        //Vérifications simples
         if (!veutEtrePassager && !veutTransporterVelo) {
             return new ReservationResult(false, "Veuillez choisir au moins une option (passager ou vélo).");
         }
@@ -478,7 +465,7 @@ public class AppModel {
             return new ReservationResult(false, "Vous devez sélectionner un vélo compatible.");
         }
 
-        // 2. Charger les véhicules pour être sûr d'avoir les données à jour
+        //Charger les véhicules pour être sûr d'avoir les données à jour
         ride.loadVehicles(conn);
 
         // 3. Empêcher un conducteur de réserver comme passager
@@ -488,7 +475,7 @@ public class AppModel {
                     "Vous ne pouvez pas réserver une place passager/vélo en plus.");
         }
 
-        // 4. Déléguer à la méthode existante (qui contient toute la logique métier)
+        // 4. Déléguer à la méthode existante
         return reserverBalade(membre, ride, veutEtrePassager, veutTransporterVelo, veloChoisi);
     }
 
@@ -500,10 +487,8 @@ public class AppModel {
         return ride.getVehicles().stream()
                 .anyMatch(v -> v.getDriver() != null && v.getDriver().equals(membre));
     }
-   
-    // dans WelcomePanel.java on recupère les rides via Ride.allRides(conn) et 
-    // on les filtres ici
- // AppModel.java
+  
+    // AppModel.java
     public Map<TypeCat, List<Object[]>> getPublicUpcomingRidesForTable() {
         
         DateTimeFormatter fmt = DateTimeFormatter.ofPattern("EEEE dd MMMM yyyy 'à' HH:mm", Locale.FRENCH);
@@ -587,5 +572,60 @@ public class AppModel {
 	         })
 	         .toList();
 	 }
+	 
+	// ===================================================================
+	// ==================== LOGIQUE INSCRIPTION MEMBRE ===================
+	// ===================================================================
+	 
+	 /**
+	  * Crée un nouveau membre COMPLET avec vélo et catégorie préférée
+	  * @return true si succès complet
+	  */
+	 public boolean creerMembreComplet(String nom, String prenom, String telephone, 
+	         String motDePasse, TypeCat categoriePreferee, 
+	         double poidsVelo, TypeCat typeVelo, double longueurVelo) {
+	     
+	     try {
+	         // 1. VALIDATIONS (toutes centralisées ici)
+	         if (nom == null || nom.trim().isEmpty() || 
+	             prenom == null || prenom.trim().isEmpty() ||
+	             telephone == null || !telephone.matches("^04[0-9]{8}$") ||
+	             motDePasse == null || motDePasse.isEmpty() ||
+	             poidsVelo <= 0 || longueurVelo <= 0 ||
+	             categoriePreferee == null || typeVelo == null) {
+	             return false;
+	         }
+
+	         Connection conn = getConnection();
+	         
+	         // 2. CRÉER LE MEMBRE
+	         Member member = new Member();
+	         member.setName(nom.trim());
+	         member.setFirstname(prenom.trim());
+	         member.setTel(telephone.trim());
+	         member.setPassword(motDePasse); 
+	         member.setBalance(0.0);
+
+	         // 3. AJOUTER CATÉGORIE PRÉFÉRÉE
+	         Category categorie = new Category();
+	         categorie.setid(categoriePreferee.getId());
+	         member.addCategory(categorie);
+
+	         // 4. AJOUTER VÉLO OBLIGATOIRE
+	         Bike velo = new Bike();
+	         velo.setWeight(poidsVelo);
+	         velo.setType(typeVelo);
+	         velo.setLength(longueurVelo);
+	         member.addBike(velo); 
+
+	         // 5. SAUVEGARDE ATOMIQUE
+	         return member.create(conn);
+
+	     } catch (Exception e) {
+	         e.printStackTrace();
+	         return false;
+	     }
+	 }
+
     
 }

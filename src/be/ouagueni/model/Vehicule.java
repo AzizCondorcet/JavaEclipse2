@@ -13,12 +13,11 @@ public class Vehicule implements Serializable {
     private int id;
     private int seatNumber;
     private int bikeSpotNumber;
-    private Set<Member> passengers = new HashSet<>(); // 1..* : au moins 1 passager
-    private Member driver; // 1 : exactement 1 conducteur (pas un Set!)
-    private Set<Bike> bikes = new HashSet<>(); // 0..* : peut être vide
-    private Set<Ride> rides = new HashSet<>(); // 1..* : au moins 1 ride
+    private Set<Member> passengers = new HashSet<>(); 
+    private Member driver;
+    private Set<Bike> bikes = new HashSet<>(); 
+    private Set<Ride> rides = new HashSet<>(); 
 
-    // Constructeurs
     public Vehicule() {}
     
     public Vehicule(int id, int seatNumber, int bikeSpotNumber) {
@@ -203,7 +202,6 @@ public class Vehicule implements Serializable {
             return v;
         }
 
-        // ON NE CRÉE RIEN ICI → c’est juste une lecture
         return null;
     }
     
@@ -213,12 +211,11 @@ public class Vehicule implements Serializable {
     }
     
     public static Vehicule ensureVehicleExists(Member driver, Connection conn) throws SQLException {
-    		Vehicule v = getOrCreateForDriver(driver, conn); // maintenant safe → retourne null si pas de véhicule
+    		Vehicule v = getOrCreateForDriver(driver, conn); 
         if (v != null) {
             return v;
         }
 
-        // On crée uniquement quand on poste des disponibilités
         Vehicule newVehicle = new Vehicule(1, 0, driver);
         VehiculeDAO dao = new VehiculeDAO(conn);
         if (dao.create(newVehicle)) {

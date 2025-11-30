@@ -42,21 +42,19 @@ public class BikeDAO extends DAO<Bike> {
     public boolean delete(Bike bike) {
         if (bike.getId() <= 0) return false;
 
-        // Vérification directe : est-ce que ce vélo est utilisé dans une inscription ?
+        // Vérification directe 
         String checkSql = "SELECT COUNT(*) FROM Inscription WHERE idBike = ?";
         String deleteSql = "DELETE FROM Bike WHERE idBike = ?";
 
         try {
-            // 1. Vérification
             try (PreparedStatement check = connect.prepareStatement(checkSql)) {
                 check.setInt(1, bike.getId());
                 ResultSet rs = check.executeQuery();
                 if (rs.next() && rs.getInt(1) > 0) {
-                    return false; // Vélo déjà réservé → interdit
+                    return false; // Vélo déjà réservé peut pas interdit
                 }
             }
 
-            // 2. Suppression
             try (PreparedStatement delete = connect.prepareStatement(deleteSql)) {
                 delete.setInt(1, bike.getId());
                 int rows = delete.executeUpdate();
@@ -75,12 +73,12 @@ public class BikeDAO extends DAO<Bike> {
     public boolean update(Bike bike) {
         if (bike.getId() <= 0) return false;
 
-        // Même vérification directe ici
+        // Même vérification
         String checkSql = "SELECT COUNT(*) FROM Inscription WHERE idBike = ?";
         String updateSql = "UPDATE Bike SET weight = ?, bikeType = ?, length = ?, idMember = ? WHERE idBike = ?";
 
         try {
-            // 1. Vérification : utilisé dans une inscription ?
+            // 1. Vérification : utilisé dans une inscription 
             try (PreparedStatement check = connect.prepareStatement(checkSql)) {
                 check.setInt(1, bike.getId());
                 ResultSet rs = check.executeQuery();

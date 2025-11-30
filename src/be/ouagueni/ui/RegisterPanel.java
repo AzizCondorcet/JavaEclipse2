@@ -102,7 +102,7 @@ public class RegisterPanel extends JPanel {
     
     private void handleRegister(ActionEvent e) {
         try {
-            // --- Récupération des champs ---
+            // --- RÉCUPÉRATION SIMPLE ---
             String lastName = txtLastName.getText().trim();
             String firstName = txtFirstName.getText().trim();
             String tel = txtTel.getText().trim();
@@ -113,72 +113,61 @@ public class RegisterPanel extends JPanel {
             double weight = Double.parseDouble(txtBikeWeight.getText().trim());
             double length = Double.parseDouble(txtBikeLength.getText().trim());
 
-            // --- Validation ---
-            if (lastName.isEmpty() || firstName.isEmpty() || tel.isEmpty() || password.isEmpty() ||
-                bikeTypeStr == null || txtBikeWeight.getText().trim().isEmpty() || txtBikeLength.getText().trim().isEmpty()) {
-                JOptionPane.showMessageDialog(this, "Tous les champs sont obligatoires.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            if (!tel.matches("^04[0-9]{8}$")) {
-                JOptionPane.showMessageDialog(this, "Téléphone invalide (ex: 0471234567)", "Erreur", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            if (weight <= 0 || length <= 0) {
-                JOptionPane.showMessageDialog(this, "Poids et longueur doivent être > 0.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            // --- Mapper String → TypeCat ---
+            // --- Mapper type vélo ---
             TypeCat bikeType = switch (bikeTypeStr) {
                 case "Route" -> TypeCat.RoadBike;
                 case "Trial" -> TypeCat.Trial;
                 case "Descente" -> TypeCat.Downhill;
                 case "Cross" -> TypeCat.Cross;
-                default -> throw new IllegalArgumentException("Type de vélo invalide");
+                default -> null;
             };
 
-            // --- Création des objets avec TES noms ---
-            Member member = new Member();
-            member.setName(lastName);           // ← getName()
-            member.setFirstname(firstName);     // ← getFirstname()
-            member.setTel(tel);                 // ← getTel()
-            member.setPassword(password);       // ← getPassword()
-            member.setBalance(0.0);
+            if (bikeType == null) {
+                JOptionPane.showMessageDialog(this, "Type de vélo invalide.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                return;
+            }
 
-            // Catégorie préférée
-            Category category = new Category();
-            category.setid(selectedCat.getId());
-            member.addCategory(category); // ← garde au moins 1 catégorie
+            // --- DÉLÉGUER À AppModel ---
+            AppModel appModel = AppModel.getInstance();
+            boolean succes = appModel.creerMembreComplet(
+                lastName, firstName, tel, password, 
+                selectedCat, weight, bikeType, length
+            );
 
-            // Vélo
-            Bike bike = new Bike();
-            bike.setWeight(weight);
-            bike.setType(bikeType);             // ← TypeCat
-            bike.setLength(length);
-            member.addBike(bike);               // ← déclenche contrainte + setOwner
-
-            // --- Création via le modèle ---
-            if (member.create(conn)) {
+            if (succes) {
                 JOptionPane.showMessageDialog(this,
-                        "Compte créé avec succès !\nVous pouvez vous connecter.",
-                        "Succès", JOptionPane.INFORMATION_MESSAGE);
+                    "Compte créé avec succès !\nVous pouvez vous connecter.",
+                    "Succès", JOptionPane.INFORMATION_MESSAGE);
                 frame.showPanel("login");
+                //Effacer les champs
+                clearFields();
             } else {
                 JOptionPane.showMessageDialog(this,
-                        "Erreur lors de la création du compte.",
-                        "Erreur", JOptionPane.ERROR_MESSAGE);
+                    "Erreur lors de la création du compte.\nVérifiez vos données.",
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
             }
 
         } catch (NumberFormatException ex) {
-            JOptionPane.showMessageDialog(this, "Poids et longueur doivent être des nombres valides.", "Erreur", JOptionPane.ERROR_MESSAGE);
-        } catch (IllegalArgumentException ex) {
-            JOptionPane.showMessageDialog(this, ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                "Poids et longueur doivent être des nombres valides.", 
+                "Erreur", JOptionPane.ERROR_MESSAGE);
         } catch (Exception ex) {
-            JOptionPane.showMessageDialog(this, "Erreur inattendue : " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
+            JOptionPane.showMessageDialog(this, 
+                "Erreur inattendue : " + ex.getMessage(), 
+                "Erreur", JOptionPane.ERROR_MESSAGE);
             ex.printStackTrace();
         }
+    }
+
+    private void clearFields() {
+        txtLastName.setText("");
+        txtFirstName.setText("");
+        txtTel.setText("");
+        txtPassword.setText("");
+        txtBikeWeight.setText("");
+        txtBikeLength.setText("");
+        comboCategory.setSelectedIndex(0);
+        comboBikeType.setSelectedIndex(0);
     }
 
 

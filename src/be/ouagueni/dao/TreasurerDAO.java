@@ -94,7 +94,7 @@ public class TreasurerDAO extends DAO<Treasurer> {
             while (rs.next()) {
                 Ride r = new Ride();
                 r.setId(rs.getInt("idRide"));
-                r.setnum(rs.getInt("num"));  // Correction
+                r.setnum(rs.getInt("num"));  
                 r.setStartPlace(rs.getString("startPlace"));
                 r.setStartDate(rs.getTimestamp("startDate").toLocalDateTime());
                 r.setFee(rs.getDouble("fee"));

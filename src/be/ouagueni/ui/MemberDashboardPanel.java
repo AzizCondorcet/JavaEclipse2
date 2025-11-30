@@ -20,6 +20,7 @@ public class MemberDashboardPanel extends JPanel {
     private JButton btnDisponibilite;
     private JButton btnReserver;
     private JTabbedPane tabbedPane;
+    private JPanel rulesPanel;
 
     public MemberDashboardPanel(ClubFrame parentFrame, Member member, Connection conn) {
         this.parentFrame = parentFrame;
@@ -33,7 +34,6 @@ public class MemberDashboardPanel extends JPanel {
         buildFooter();
 
         refreshBalanceAndButtons();
-        refreshAll(); // Rafraîchit les deux onglets au démarrage
     }
 
     private void buildHeader() {
@@ -57,6 +57,8 @@ public class MemberDashboardPanel extends JPanel {
         topButtons.add(btnPayerCotisation);
         topButtons.add(btnAjouterFonds);
 
+        rulesPanel = createRulesPanelContent();  
+
         JPanel northPanel = new JPanel();
         northPanel.setLayout(new BoxLayout(northPanel, BoxLayout.Y_AXIS));
         northPanel.add(lblTitle);
@@ -65,16 +67,19 @@ public class MemberDashboardPanel extends JPanel {
         northPanel.add(lblBalance);
         northPanel.add(Box.createVerticalStrut(15));
         northPanel.add(topButtons);
+        northPanel.add(Box.createVerticalStrut(10));
+        northPanel.add(rulesPanel);
 
         add(northPanel, BorderLayout.NORTH);
 
+        // Actions (inchangées)
         btnDisponibilite.addActionListener(this::ouvrirDisponibilite);
         btnReserver.addActionListener(this::ouvrirReservation);
         btnChoisirCategorie.addActionListener(e -> choisirCategorie());
         btnPayerCotisation.addActionListener(e -> payerCotisation());
         btnAjouterFonds.addActionListener(e -> ajouterFonds());
     }
-
+    
     private void buildMainContent() {
         tabbedPane = new JTabbedPane();
         tabbedPane.addTab("Mes inscriptions", createMemberInscriptionsPanel());
@@ -92,9 +97,9 @@ public class MemberDashboardPanel extends JPanel {
         add(south, BorderLayout.SOUTH);
     }
 
- // ====================== ACTIONS ======================
-
- // ====================== VÉHICULE (lecture seule) ======================
+	 // ====================== ACTIONS ======================
+	
+	 // ====================== VÉHICULE (lecture seule) ======================
     private JPanel createVehiclePanel() {
         JPanel panel = new JPanel(new BorderLayout());
         panel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
@@ -122,6 +127,49 @@ public class MemberDashboardPanel extends JPanel {
 
         panel.add(content, BorderLayout.CENTER);
         return panel;
+    }
+    
+    private void refreshRulesPanel() {
+        rulesPanel.removeAll();
+        
+        // Règle 1
+        rulesPanel.add(new JLabel("Payer votre cotisation pour poster vos disponibilités et réserver") {{
+            setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            setForeground(new Color(100, 100, 100));
+            setBorder(BorderFactory.createEmptyBorder(5, 0, 5, 0));
+        }});
+
+        // Règle 2
+        rulesPanel.add(new JLabel("Avoir un vélo du type de la balade pour pouvoir réserver") {{
+            setFont(new Font("Segoe UI", Font.PLAIN, 13));
+            setForeground(new Color(100, 100, 100));
+            setBorder(BorderFactory.createEmptyBorder(0, 0, 5, 0));
+        }});
+
+        //ETAT COTISATION
+        boolean cotisationPayee = model.cotisationEstPayee(currentMember);
+        rulesPanel.add(new JLabel(cotisationPayee ? "Cotisation payée" : "Cotisation NON payée") {{
+            setFont(new Font("Segoe UI", Font.BOLD, 12));
+            setForeground(cotisationPayee ? new Color(40, 167, 69) : new Color(220, 53, 69));
+        }});
+        
+        rulesPanel.revalidate();
+        rulesPanel.repaint();
+    }
+    
+    private JPanel createRulesPanelContent() {
+        rulesPanel = new JPanel();  // 🔥 RÉFÉRENCE DIRECTE
+        rulesPanel.setLayout(new BoxLayout(rulesPanel, BoxLayout.Y_AXIS));
+        rulesPanel.setBorder(BorderFactory.createCompoundBorder(
+            BorderFactory.createTitledBorder("📋 Règles du club"),
+            BorderFactory.createEmptyBorder(10, 15, 10, 15)
+        ));
+        rulesPanel.setBackground(new Color(248, 249, 250));
+        rulesPanel.setMaximumSize(new Dimension(Integer.MAX_VALUE, 120));
+        
+        refreshRulesPanel();  
+        
+        return rulesPanel; 
     }
     
     private void choisirCategorie() {
@@ -239,6 +287,8 @@ public class MemberDashboardPanel extends JPanel {
 
 
     private void refreshAll() {
+        refreshRulesPanel();  
+        
         tabbedPane.setComponentAt(0, createMemberInscriptionsPanel());
         tabbedPane.setComponentAt(1, createBikesPanel());
         tabbedPane.setComponentAt(2, createVehiclePanel());

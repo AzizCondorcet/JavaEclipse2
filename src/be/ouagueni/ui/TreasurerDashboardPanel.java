@@ -38,7 +38,7 @@ public class TreasurerDashboardPanel extends JPanel {
         topButtons.setBorder(BorderFactory.createEmptyBorder(40, 100, 40, 100));
 
         btnReminder  = new JButton("Envoyer rappel de paiement");
-        btnPayDriver = new JButton("Valider paiements covoiturage");
+        btnPayDriver = new JButton("Valider paiements");
         btnClaimFee  = new JButton("Réclamer les frais non payés");
 
         Font buttonFont = new Font("Segoe UI", Font.PLAIN, 18);
@@ -76,7 +76,7 @@ public class TreasurerDashboardPanel extends JPanel {
     }
 
     // ==================================================================
-    // LOGIQUE UI (MÉTHODES EXACTES DU MODEL)
+    // LOGIQUE UI
     // ==================================================================
 
     private void handleReminder() {

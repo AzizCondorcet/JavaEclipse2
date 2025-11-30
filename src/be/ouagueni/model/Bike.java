@@ -6,14 +6,13 @@ import java.util.HashSet;
 import java.util.Set;
 
 import be.ouagueni.dao.BikeDAO;
-import be.ouagueni.dao.MemberDAO;
 
 public class Bike implements Serializable {
     private static final long serialVersionUID = -4193360624407477516L;
 
     private int id;
     private double weight;
-    private TypeCat type; // utilisation de l'enum
+    private TypeCat type; 
     private double length;
     private Member owner;
     private Vehicule vehicle;
@@ -56,12 +55,10 @@ public class Bike implements Serializable {
         this.type = type;
     }
 
-    // Utilitaire pour DAO : récupérer l'int correspondant pour SQL
     public int getTypeAsInt() {
         return type.toInt();
     }
 
-    // Utilitaire pour DAO : setter depuis int SQL
     public void setTypeFromInt(int value) {
         this.type = TypeCat.fromId(value);
         if (this.type == null) throw new IllegalArgumentException("Type de vélo inconnu : " + value);

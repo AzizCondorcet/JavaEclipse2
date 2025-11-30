@@ -36,7 +36,6 @@ public class OptimisationCovoiturage {
     public static ResultatOptimisation optimiser(Ride ride) {
         ResultatOptimisation resultat = new ResultatOptimisation();
 
-        // 1. Véhicules avec conducteur, triés par capacité totale décroissante
         List<Vehicule> vehicules = ride.getVehicles().stream()
                 .filter(v -> v.getDriver() != null)
                 .sorted((v1, v2) -> Integer.compare(
@@ -44,7 +43,6 @@ public class OptimisationCovoiturage {
                         v1.getSeatNumber() + v1.getBikeSpotNumber()))
                 .toList();
 
-        // Initialisation des affectations
         for (Vehicule v : vehicules) {
             resultat.getAffectationPassagers().put(v, new ArrayList<>());
             resultat.getAffectationVelos().put(v, new ArrayList<>());
@@ -52,7 +50,7 @@ public class OptimisationCovoiturage {
             v.getBikes().clear();
         }
 
-        // 2. Passagers à placer (exclure les conducteurs)
+        // 2. Passagers à placer
         List<Member> passagers = ride.getInscriptions().stream()
                 .filter(Inscription::isPassenger)
                 .map(Inscription::getMember)
@@ -60,7 +58,7 @@ public class OptimisationCovoiturage {
                 .filter(m -> vehicules.stream().noneMatch(v -> v.getDriver().equals(m))) // pas conducteur
                 .toList();
 
-        // Placement des passagers (First-Fit)
+        // Placement des passagers 
         for (Member p : passagers) {
             boolean placeTrouvee = false;
             for (Vehicule v : vehicules) {
@@ -138,7 +136,7 @@ public class OptimisationCovoiturage {
             suggestions.add(String.format("Il manque %d place(s) vélo → cherchez des porte-vélos !", velosManquants));
         }
 
-        // Véhicules très peu remplis → suggestion de regroupement
+        // Véhicules très peu remplis
         long vehiculesSousUtilises = ride.getVehicles().stream()
                 .filter(v -> v.getDriver() != null)
                 .filter(v -> {

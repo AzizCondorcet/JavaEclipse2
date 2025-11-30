@@ -83,7 +83,7 @@ public class RideDAO extends DAO<Ride> {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return null; // si non trouvé
+        return null; 
     }
 	
 	public Set<Ride> getAllRides() {
@@ -120,7 +120,7 @@ public class RideDAO extends DAO<Ride> {
 	        while (rs.next()) {
 	            int rideId = rs.getInt("idRide");
 
-	            // On crée la Ride seulement si elle n'existe pas encore
+	            // On crée la Ride 
 	            Ride ride = rideMap.get(rideId);
 	            if (ride == null) {
 	                ride = new Ride();
@@ -152,7 +152,6 @@ public class RideDAO extends DAO<Ride> {
 	                rides.add(ride);
 	            }
 
-	            // === CHARGEMENT DES VÉHICULES ===
 	            if (rs.getObject("idVehicule") != null) {
 	                int vehId = rs.getInt("idVehicule");
 

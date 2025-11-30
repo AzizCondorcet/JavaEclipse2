@@ -14,9 +14,9 @@ public class Ride implements Serializable
     private int id;
     private int num;
     private String startPlace;
-    private LocalDateTime startDate; // adapte au type Date si tu veux
+    private LocalDateTime startDate; 
     private double fee;
-    private Calendar calendar; // ajoute cette ligne pour l'association avec Calendar
+    private Calendar calendar; 
     private Set<Inscription> inscriptions = new HashSet<>();
     private Set<Vehicule> vehicles = new HashSet<>();
 
@@ -68,7 +68,6 @@ public class Ride implements Serializable
     
     @Override
     public String toString() {
-        // Format clair et lisible pour le trésorier
         String date = startDate != null 
             ? startDate.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy"))
             : "Date inconnue";
@@ -134,9 +133,7 @@ public class Ride implements Serializable
         Set<Vehicule> loadedVehicles = rideDAO.getVehiclesForRide(this.getId());
         this.vehicles.clear();
         this.vehicles.addAll(loadedVehicles);
-    } 
-    
-    // === AJOUTE ÇA DANS TA CLASSE Ride ===
+    }
 
     public int getNeededSeatNumber() {
         return (int) inscriptions.stream()

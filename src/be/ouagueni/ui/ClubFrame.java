@@ -4,10 +4,6 @@ import be.ouagueni.model.*;
 import javax.swing.*;
 import java.awt.*;
 import java.sql.Connection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.Set;
-
 public class ClubFrame extends JFrame {
 
     private final CardLayout cardLayout;
@@ -19,10 +15,8 @@ public class ClubFrame extends JFrame {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
             try {
-                // Look & Feel du système (Windows / macOS / Linux)
                 UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
             } catch (Exception ignored) {
-                // Si ça ne marche pas → on garde le Look & Feel par défaut, pas grave
             }
 
             ClubFrame frame = new ClubFrame();
@@ -42,7 +36,6 @@ public class ClubFrame extends JFrame {
         cardLayout = new CardLayout();
         mainPanel = new JPanel(cardLayout);
 
-        // Panels de base
         mainPanel.add(new WelcomePanel(this, conn), "login");
         mainPanel.add(new RegisterPanel(this, conn), "register");
 

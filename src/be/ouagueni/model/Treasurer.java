@@ -12,7 +12,6 @@ public class Treasurer extends Person {
         super(id, name, firstname, tel, password);
     }
 
-    // MÉTHODES EXACTES
     public List<Member> sendReminderLetter(Connection conn) {
         return new TreasurerDAO(conn).getMembersInDebt();
     }

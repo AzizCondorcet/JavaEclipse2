@@ -12,7 +12,6 @@ public abstract class AbstractDAOFactory {
     public static final int DAO_FACTORY = 0;
     public static final int XML_DAO_FACTORY = 1; 
 
-    // Méthodes abstraites pour obtenir les DAO
     public abstract DAO<Member> getMemberDAO();
     public abstract DAO<Bike> getBikeDAO();
     public abstract DAO<Vehicule> getVehicleDAO();

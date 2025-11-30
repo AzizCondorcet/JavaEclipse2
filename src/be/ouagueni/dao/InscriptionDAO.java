@@ -21,7 +21,7 @@ public class InscriptionDAO extends DAO<Inscription> {
         int idMember = ins.getMember().getIdMember();
         int idRide   = ins.getRide().getId();
 
-        // Étape 1 : Vérifier s'il existe déjà
+        // Vérifier si il existe 
         String checkSql = "SELECT COUNT(*) FROM Inscription WHERE idMember = ? AND idRide = ?";
         try (PreparedStatement checkPs = connect.prepareStatement(checkSql)) {
             checkPs.setInt(1, idMember);
@@ -38,7 +38,7 @@ public class InscriptionDAO extends DAO<Inscription> {
             return false;
         }
 
-        // Étape 2 : Insertion normale (sans FROM dual ni NOT EXISTS)
+        // Insertion normale
         String insertSql = "INSERT INTO Inscription (idMember, idRide, passenger, bike, idBike) VALUES (?, ?, ?, ?, ?)";
 
         try (PreparedStatement ps = connect.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
@@ -51,7 +51,7 @@ public class InscriptionDAO extends DAO<Inscription> {
             if (ins.isBike() && ins.getBikeObj() != null && ins.getBikeObj().getId() > 0) {
                 ps.setInt(5, ins.getBikeObj().getId());
             } else {
-                ps.setNull(5, java.sql.Types.INTEGER);  // parfait
+                ps.setNull(5, java.sql.Types.INTEGER);  
             }
 
             int affectedRows = ps.executeUpdate();
@@ -61,7 +61,7 @@ public class InscriptionDAO extends DAO<Inscription> {
                 return false;
             }
 
-            // Récupérer l'ID généré
+            // Récupérer l'ID 
             try (ResultSet generatedKeys = ps.getGeneratedKeys()) {
                 if (generatedKeys.next()) {
                     ins.setId(generatedKeys.getInt(1));

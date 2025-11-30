@@ -41,7 +41,7 @@ public class CategoryDAO extends DAO<Category> {
 	            }
 	        }
 
-	        // 2️⃣ Récupérer l'ID du manager correspondant à ce type
+	        // Récupérer l'ID du manager 
 	        int managerId = -1;
 	        int CatID =-1;
 	        String sqlManager = "SELECT idManager ,idCategory FROM Category WHERE Type = ?";
@@ -57,7 +57,7 @@ public class CategoryDAO extends DAO<Category> {
 	            }
 	        }
 
-	        // 3️⃣ Récupérer les infos du Manager (héritées de Person)
+	        // Récupérer les infos du Manager
 	        String sqlFullManager = """
 	            	SELECT
 				    p.id,
@@ -77,7 +77,7 @@ public class CategoryDAO extends DAO<Category> {
 	            psFull.setInt(1, managerId);
 	            try (ResultSet rs = psFull.executeQuery()) {
 	                if (rs.next()) {
-	                    // ✅ Instanciation conforme à ta classe Manager
+	                    // Instanciation conforme 
 	                    manager = new Manager(
 	                        rs.getInt("id"),
 	                        rs.getString("namesPers"),
@@ -91,7 +91,7 @@ public class CategoryDAO extends DAO<Category> {
 	            }
 	        }
 
-	        // 4️⃣ Mettre à jour uniquement l’objet Category (pas la BD)
+	        // Mettre à jour uniquement l’objet Category 
 	        category.setid(CatID); 
 	        category.setManager(manager);
 	        return true;
@@ -133,10 +133,8 @@ public class CategoryDAO extends DAO<Category> {
 	         ResultSet rs = ps.executeQuery()) {
 
 	        while (rs.next()) {
-	            // 1. Créer le TypeCat (enum)
 	            TypeCat typeCat = TypeCat.valueOf(rs.getString("nameType"));
 
-	            // 2. Créer le Manager s'il existe
 	            Manager manager = null;
 	            if (rs.getObject("idManager") != null) {
 	                manager = new Manager(
@@ -149,19 +147,16 @@ public class CategoryDAO extends DAO<Category> {
 	                manager.setId(rs.getInt("idManager"));
 	            }
 
-	            // 3. Créer la Category
 	            Category cat = new Category();
 	            cat.setid(rs.getInt("idCategory"));
 	            cat.setNomCategorie(typeCat);
 	            cat.setManager(manager);
-	            // Note : pas de Calendar ici (pas dans la requête, pas nécessaire pour l'affichage)
 
 	            categories.add(cat);
 	        }
 
 	    } catch (SQLException e) {
 	        e.printStackTrace();
-	        // Tu peux logger ou lancer une exception personnalisée ici
 	    }
 
 	    return categories;

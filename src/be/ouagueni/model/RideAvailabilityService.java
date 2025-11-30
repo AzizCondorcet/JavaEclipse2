@@ -8,7 +8,7 @@ public class RideAvailabilityService {
     public void postAvailability(Member member, Ride ride, int seatNumber, int bikeSpotNumber, Connection conn) 
             throws SQLException, IllegalStateException {
 
-        // 1. Vérification dette → OK, on utilise les méthodes autorisées du Member
+        // 1. Vérification dette → OK
         if (member.getBalance() < 0) {
             throw new IllegalStateException("Vous avez une dette de " + String.format("%.2f €", -member.getBalance()));
         }

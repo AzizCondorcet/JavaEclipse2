@@ -25,7 +25,6 @@ public class VehiculeDAO extends DAO<Vehicule> {
             return false;
         }
         
-        // ✅ UTILISER getIdMember() au lieu de getId()
         int driverId = vehicle.getDriver().getIdMember();
         
         if (driverId <= 0) {
@@ -39,7 +38,6 @@ public class VehiculeDAO extends DAO<Vehicule> {
         try {
             conn.setAutoCommit(false);
 
-            // === 1. VÉRIFIER QUE LE MEMBRE N'A PAS DÉJÀ SA VOITURE DANS CE RIDE ===
             for (Ride ride : vehicle.getRides()) {
                 String checkSql = """
                     SELECT 1 FROM Ride_Vehicule rv
@@ -48,7 +46,7 @@ public class VehiculeDAO extends DAO<Vehicule> {
                     """;
                 try (PreparedStatement ps = conn.prepareStatement(checkSql)) {
                     ps.setInt(1, ride.getId());
-                    ps.setInt(2, driverId);  // ✅ Utilise maintenant idMember
+                    ps.setInt(2, driverId); 
                     try (ResultSet rs = ps.executeQuery()) {
                         if (rs.next()) {
                             conn.rollback();
@@ -59,20 +57,17 @@ public class VehiculeDAO extends DAO<Vehicule> {
                 }
             }
 
-            // === 2. CRÉER OU RÉUTILISER LE VÉHICULE ===
             int vehicleId;
 
-            // Si le membre a déjà une voiture → réutiliser
             String getVehicleSql = "SELECT idVehicule FROM Vehicule WHERE idMemberDriver = ?";
             try (PreparedStatement ps = conn.prepareStatement(getVehicleSql)) {
-                ps.setInt(1, driverId);  // ✅ Utilise idMember
+                ps.setInt(1, driverId);  
                 try (ResultSet rs = ps.executeQuery()) {
                     if (rs.next()) {
                         vehicleId = rs.getInt("idVehicule");
                         vehicle.setId(vehicleId);
                         System.out.println("Véhicule existant réutilisé : ID = " + vehicleId);
 
-                        // Mettre à jour les places (si changé)
                         String updateSql = "UPDATE Vehicule SET seatNumber = ?, bikeSpotNumber = ? WHERE idVehicule = ?";
                         try (PreparedStatement psUpdate = conn.prepareStatement(updateSql)) {
                             psUpdate.setInt(1, vehicle.getSeatNumber());
@@ -86,7 +81,7 @@ public class VehiculeDAO extends DAO<Vehicule> {
                         try (PreparedStatement psInsert = conn.prepareStatement(insertSql, Statement.RETURN_GENERATED_KEYS)) {
                             psInsert.setInt(1, vehicle.getSeatNumber());
                             psInsert.setInt(2, vehicle.getBikeSpotNumber());
-                            psInsert.setInt(3, driverId);  // ✅ Utilise idMember
+                            psInsert.setInt(3, driverId);  
                             if (psInsert.executeUpdate() == 0) {
                                 conn.rollback();
                                 return false;
@@ -106,7 +101,6 @@ public class VehiculeDAO extends DAO<Vehicule> {
                 }
             }
 
-            // === 3. LIER LE VÉHICULE À CHAQUE RIDE (sans doublon) ===
             for (Ride ride : vehicle.getRides()) {
                 String linkSql = "INSERT INTO Ride_Vehicule (idRide, idVehicule) VALUES (?, ?)";
                 try (PreparedStatement ps = conn.prepareStatement(linkSql)) {
@@ -154,7 +148,7 @@ public class VehiculeDAO extends DAO<Vehicule> {
         try {
             connect.setAutoCommit(false);
 
-            // 1. Mise à jour des capacités du véhicule
+            // 1. Mise à jour 
             String sqlCapacite = "UPDATE Vehicule SET seatNumber = ?, bikeSpotNumber = ? WHERE idVehicule = ?";
             try (PreparedStatement ps = connect.prepareStatement(sqlCapacite)) {
                 ps.setInt(1, vehicle.getSeatNumber());
@@ -164,15 +158,12 @@ public class VehiculeDAO extends DAO<Vehicule> {
                 System.out.println("Capacités véhicule ID " + vehicle.getId() + " mises à jour : " + updated + " ligne(s)");
             }
 
-            // 2. Pour chaque ride associée → synchroniser passagers + vélos
             for (Ride ride : vehicle.getRides()) {
                 int rideId = ride.getId();
                 int vehId = vehicle.getId();
 
-                // ─── PASSAGERS ───
                 Set<Member> currentPassengers = vehicle.getPassengers();
 
-                // Supprimer les anciens liens pour ce ride
                 String deletePassagers = "DELETE FROM Vehicule_Passager WHERE idVehicule = ? AND idMember IN (SELECT idMember FROM Inscription WHERE idRide = ?)";
                 try (PreparedStatement ps = connect.prepareStatement(deletePassagers)) {
                     ps.setInt(1, vehId);
@@ -180,7 +171,6 @@ public class VehiculeDAO extends DAO<Vehicule> {
                     ps.executeUpdate();
                 }
 
-                // Réinsérer uniquement ceux qui n'existent pas déjà (compatible Access)
                 String insertPassagerSql = """
                     INSERT INTO Vehicule_Passager (idVehicule, idMember)
                     SELECT ?, ?
@@ -205,10 +195,8 @@ public class VehiculeDAO extends DAO<Vehicule> {
                     System.out.println("Passagers insérés pour ride " + rideId + " : " + java.util.Arrays.stream(inserted).sum());
                 }
 
-                // ─── VÉLOS ───
                 Set<Bike> currentBikes = vehicle.getBikes();
 
-                // Supprimer anciens
                 String deleteBikes = """
                     DELETE FROM Vehicule_Bike 
                     WHERE idVehicule = ? 
@@ -223,7 +211,6 @@ public class VehiculeDAO extends DAO<Vehicule> {
                     ps.executeUpdate();
                 }
 
-                // Réinsérer vélos sans doublon (compatible Access)
                 String insertBikeSql = """
                     INSERT INTO Vehicule_Bike (idVehicule, idBike)
                     SELECT ?, ?
@@ -328,7 +315,7 @@ public class VehiculeDAO extends DAO<Vehicule> {
                 }
             }
             
-            // 3. Lier aux rides (avec vérification pour éviter les doublons)
+            // 3. Lier aux rides 
             String checkLink = "SELECT COUNT(*) FROM Ride_Vehicule WHERE idRide = ? AND idVehicule = ?";
             String insertLink = "INSERT INTO Ride_Vehicule (idRide, idVehicule) VALUES (?, ?)";
             
@@ -336,14 +323,12 @@ public class VehiculeDAO extends DAO<Vehicule> {
                  PreparedStatement insertPs = connect.prepareStatement(insertLink)) {
                 
                 for (Ride ride : vehicle.getRides()) {
-                    // Vérifier si le lien existe déjà
                     checkPs.setInt(1, ride.getId());
                     checkPs.setInt(2, vehicle.getId());
                     
                     try (ResultSet rs = checkPs.executeQuery()) {
                         rs.next();
                         if (rs.getInt(1) == 0) {
-                            // Le lien n'existe pas, on l'insère
                             insertPs.setInt(1, ride.getId());
                             insertPs.setInt(2, vehicle.getId());
                             insertPs.addBatch();

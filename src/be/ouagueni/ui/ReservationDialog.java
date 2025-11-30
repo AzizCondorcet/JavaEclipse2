@@ -22,7 +22,7 @@ public class ReservationDialog extends JDialog {
         super(parent, "Réserver une balade", true);
         this.membre = membre;
 
-        // Si aucune sortie compatible → message et fermeture immédiate
+        // Si aucune sortie compatible
         if (model.getRidesCompatiblesPourMembre(membre).isEmpty()) {
             String types = membre.getBikes().stream()
                     .map(b -> model.getLibelleCategorie(b.getType()))
@@ -67,7 +67,6 @@ public class ReservationDialog extends JDialog {
                 return this;
             }
         });
-
         // ==================== OPTIONS DROITE ====================
         chkPassager = new JCheckBox("Je veux être passager");
         chkPassager.setSelected(true);
@@ -88,7 +87,6 @@ public class ReservationDialog extends JDialog {
             }
         });
 
-        // Mise à jour dynamique du combo selon la sortie sélectionnée
         listRides.addListSelectionListener(e -> {
             if (!e.getValueIsAdjusting()) {
                 updateVeloCombo();
@@ -98,7 +96,6 @@ public class ReservationDialog extends JDialog {
 
         updateVeloCombo(); // premier appel
 
-        // Panel droit
         JPanel panelOptions = new JPanel();
         panelOptions.setLayout(new BoxLayout(panelOptions, BoxLayout.Y_AXIS));
         panelOptions.setBorder(BorderFactory.createTitledBorder("Mes besoins"));

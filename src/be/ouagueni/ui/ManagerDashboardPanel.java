@@ -77,8 +77,8 @@ public class ManagerDashboardPanel extends JPanel {
         panel.add(lblCat);
         panel.add(Box.createVerticalStrut(20));
 
-        // ON RÉCUPÈRE LES RIDES VIA APPMODEL (100 % fiable maintenant)
-        List<Ride> rides = AppModel.getInstance().getRidesDuManager(manager);
+        // ON RÉCUPÈRE LES RIDES VIA APPMODEL
+        List<Ride> rides = AppModel.getInstance().getRidesDuManagerAvecStatus(manager);
 
         if (rides.isEmpty()) {
             panel.add(new JLabel("Aucune balade programmée pour le moment.", JLabel.CENTER));
@@ -99,37 +99,54 @@ public class ManagerDashboardPanel extends JPanel {
         return panel;
     }
 
-    private JPanel createRideCard(Ride ride) {
-        JPanel card = new JPanel();
-        card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
-        card.setBorder(BorderFactory.createCompoundBorder(
-            BorderFactory.createLineBorder(new Color(150, 50, 150), 2),
-            BorderFactory.createEmptyBorder(15, 15, 15, 15)
-        ));
-        card.setBackground(new Color(250, 245, 255));
+    private JPanel createRideCard(Ride ride) {  // ← RIEN NE CHANGE !
+    JPanel card = new JPanel();
+    card.setLayout(new BoxLayout(card, BoxLayout.Y_AXIS));
+    
+    // ✅ STATUS VIA APPMODEL
+    AppModel appModel = AppModel.getInstance();
+    boolean terminee = appModel.isRideTerminee(ride);
+    String status = appModel.getRideStatus(ride);
+    
+    // ✅ COULEUR DYNAMIQUE
+    Color borderColor = terminee ? new Color(0, 150, 0) : new Color(150, 50, 150);
+    Color bgColor = terminee ? new Color(240, 255, 240) : new Color(250, 245, 255);
+    
+    card.setBorder(BorderFactory.createCompoundBorder(
+        BorderFactory.createLineBorder(borderColor, 2),
+        BorderFactory.createEmptyBorder(15, 15, 15, 15)
+    ));
+    card.setBackground(bgColor);
 
-        String date = ride.getStartDate() != null
-            ? ride.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("EEEE dd MMMM yyyy à HH:mm"))
-            : "Date inconnue";
+    String date = ride.getStartDate() != null
+        ? ride.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("EEEE dd MMMM yyyy à HH:mm"))
+        : "Date inconnue";
 
-        JLabel lblTitle = new JLabel(ride.getStartPlace() + " — " + date);
-        lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
+    JLabel lblTitle = new JLabel(ride.getStartPlace() + " — " + date);
+    lblTitle.setFont(new Font("Segoe UI", Font.BOLD, 16));
 
-        JLabel lblInfos = new JLabel(String.format(
-            "<html><b>Frais :</b> %.2f € &nbsp;&nbsp;|&nbsp;&nbsp; " +
-            "<b>Inscrits :</b> %d &nbsp;&nbsp;|&nbsp;&nbsp; " +
-            "<b>Conducteurs :</b> %d</html>",
-            ride.getFee(),
-            ride.getInscriptions().size(),
-            (int) ride.getVehicles().stream().filter(v -> v.getDriver() != null).count()
-        ));
+    // ✅ STATUS DU MODEL
+    JLabel lblStatus = new JLabel(status);
+    lblStatus.setFont(new Font("Segoe UI", Font.BOLD, 12));
+    lblStatus.setForeground(terminee ? new Color(0, 120, 0) : new Color(100, 50, 150));
 
-        card.add(lblTitle);
-        card.add(Box.createVerticalStrut(8));
-        card.add(lblInfos);
+    JLabel lblInfos = new JLabel(String.format(
+        "<html><b>Frais :</b> %.2f € &nbsp;&nbsp;|&nbsp;&nbsp; " +
+        "<b>Inscrits :</b> %d &nbsp;&nbsp;|&nbsp;&nbsp; " +
+        "<b>Conducteurs :</b> %d</html>",
+        ride.getFee(),
+        ride.getInscriptions().size(),
+        (int) ride.getVehicles().stream().filter(v -> v.getDriver() != null).count()
+    ));
 
-        return card;
-    }
+    card.add(lblTitle);
+    card.add(Box.createVerticalStrut(5));
+    card.add(lblStatus);  // ✅ AJOUTÉ
+    card.add(Box.createVerticalStrut(8));
+    card.add(lblInfos);
+
+    return card;
+}
 
     private void showCreateBaladePanel() {
         parentFrame.addPanel(new CreateBaladePanel(parentFrame, manager), "createBalade");
@@ -137,66 +154,79 @@ public class ManagerDashboardPanel extends JPanel {
     }
 
     private void showOptimisationDialog() {
-        List<Ride> ridesAvecInscrits = AppModel.getInstance().getRidesAvecInscriptions(manager);
+    // ✅ FILTRER SEULEMENT BALADES À VENIR (via AppModel)
+    List<Ride> ridesFutures = AppModel.getInstance().getRidesDuManager(manager).stream()
+        .filter(ride -> !AppModel.getInstance().isRideTerminee(ride))  // ✅ SEULEMENT À VENIR
+        .filter(r -> r.getInscriptions() != null && !r.getInscriptions().isEmpty())
+        .toList();
 
-        if (ridesAvecInscrits.isEmpty()) {
-            JOptionPane.showMessageDialog(this,
-                "Aucune balade avec inscriptions à optimiser.",
-                "Information", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
+    if (ridesFutures.isEmpty()) {
+        // ✅ MESSAGE AVEC STATUS
+        String message = "Aucune balade à optimiser.\n\n" +
+            "• Toutes vos balades sont terminées 🟢\n" +
+            "• Ou n'ont pas d'inscriptions";
+        
+        JOptionPane.showMessageDialog(this, message, "Information", JOptionPane.INFORMATION_MESSAGE);
+        return;
+    }
 
-        // Fenêtre d'optimisation (inchangée, elle marche nickel)
-        JDialog dialog = new JDialog(parentFrame, "Optimisation Covoiturage – " + manager.getFirstname(), true);
-        dialog.setSize(1100, 700);
-        dialog.setLocationRelativeTo(this);
+    // ✅ LISTE AVEC STATUS VISUEL
+    JDialog dialog = new JDialog(parentFrame, "Optimisation Covoiturage – " + manager.getFirstname(), true);
+    dialog.setSize(1100, 700);
+    dialog.setLocationRelativeTo(this);
 
-        DefaultListModel<Ride> model = new DefaultListModel<>();
-        ridesAvecInscrits.forEach(model::addElement);
+    DefaultListModel<Ride> model = new DefaultListModel<>();
+    ridesFutures.forEach(model::addElement);
 
-        JList<Ride> listRides = new JList<>(model);
-        listRides.setCellRenderer((list, ride, index, sel, focus) -> {
-            int inscrits = ride.getInscriptions().size();
-            int conducteurs = (int) ride.getVehicles().stream().filter(v -> v.getDriver() != null).count();
-            String text = String.format("%s — %s — %d inscrit(s) — %d conducteur(s)",
-                ride.getStartDate().toLocalDate(),
-                ride.getStartPlace(), inscrits, conducteurs);
-            JLabel lbl = new JLabel(text);
-            if (sel) lbl.setBackground(list.getSelectionBackground());
-            lbl.setOpaque(true);
-            return lbl;
-        });
+    JList<Ride> listRides = new JList<>(model);
+    listRides.setCellRenderer((list, ride, index, sel, focus) -> {
+        AppModel appModel = AppModel.getInstance();
+        String status = appModel.getRideStatus(ride);  // ✅ STATUS
+        int inscrits = ride.getInscriptions().size();
+        int conducteurs = (int) ride.getVehicles().stream().filter(v -> v.getDriver() != null).count();
+        
+        String text = String.format("%s %s — %s — %d inscrit(s) — %d conducteur(s)",
+            status, 
+            ride.getStartDate().toLocalDate(),
+            ride.getStartPlace(), inscrits, conducteurs);
+        
+        JLabel lbl = new JLabel(text);
+        if (sel) lbl.setBackground(list.getSelectionBackground());
+        lbl.setOpaque(true);
+        return lbl;
+    });
 
-        JTextArea rapportArea = new JTextArea();
-        rapportArea.setFont(new Font("Consolas", Font.PLAIN, 14));
-        rapportArea.setEditable(false);
+    // ✅ RAPPORT INCHANGÉ
+    JTextArea rapportArea = new JTextArea();
+    rapportArea.setFont(new Font("Consolas", Font.PLAIN, 14));
+    rapportArea.setEditable(false);
 
-        listRides.addListSelectionListener(e -> {
-            if (!e.getValueIsAdjusting()) {
-                Ride selected = listRides.getSelectedValue();
-                if (selected != null) {
-                    Ride rideFresh = AppModel.getInstance().rafraichirRideDepuisBase(selected.getId());
-                    if (rideFresh != null) {
-                        String rapport = AppModel.getInstance().genererRapportOptimisationCovoiturage(rideFresh);
-                        rapportArea.setText(rapport);
-                        rapportArea.setCaretPosition(0);
-                    }
+    listRides.addListSelectionListener(e -> {
+        if (!e.getValueIsAdjusting()) {
+            Ride selected = listRides.getSelectedValue();
+            if (selected != null) {
+                Ride rideFresh = AppModel.getInstance().rafraichirRideDepuisBase(selected.getId());
+                if (rideFresh != null) {
+                    String rapport = AppModel.getInstance().genererRapportOptimisationCovoiturage(rideFresh);
+                    rapportArea.setText(rapport);
+                    rapportArea.setCaretPosition(0);
                 }
             }
-        });
+        }
+    });
 
-        if (!ridesAvecInscrits.isEmpty()) listRides.setSelectedIndex(0);
+    if (!ridesFutures.isEmpty()) listRides.setSelectedIndex(0);
 
-        JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
-            new JScrollPane(listRides), new JScrollPane(rapportArea));
-        split.setDividerLocation(400);
+    JSplitPane split = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT,
+        new JScrollPane(listRides), new JScrollPane(rapportArea));
+    split.setDividerLocation(450);  // ✅ Plus large pour status
 
-        JButton close = new JButton("Fermer");
-        close.addActionListener(e -> dialog.dispose());
+    JButton close = new JButton("Fermer");
+    close.addActionListener(e -> dialog.dispose());
 
-        dialog.setLayout(new BorderLayout());
-        dialog.add(split, BorderLayout.CENTER);
-        dialog.add(close, BorderLayout.SOUTH);
-        dialog.setVisible(true);
-    }
+    dialog.setLayout(new BorderLayout());
+    dialog.add(split, BorderLayout.CENTER);
+    dialog.add(close, BorderLayout.SOUTH);
+    dialog.setVisible(true);
+}
 }

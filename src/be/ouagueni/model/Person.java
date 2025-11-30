@@ -57,7 +57,13 @@ public abstract class Person implements Serializable {
 
     @Override
     public String toString() {
-        return "Person[id=" + id + ", name=" + name + ", firstname=" + firstname + "]";
+        return String.format("""
+                👤 %s %s
+                📱 %s
+                """, 
+                firstname, name, 
+                tel 
+        );
     }
     
     public static Person login(String name, String password,Connection conn) {

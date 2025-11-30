@@ -79,10 +79,10 @@ public class Ride implements Serializable
                 date);
     }
     
-    public boolean createRide(Ride ride,Connection conn) 
+    public boolean createRide(Connection conn) 
     {
     		RideDAO dao = new RideDAO(conn);
-    		return dao.create(ride);
+    		return dao.create(this);
     }
     public static Set<Ride> allRides(Connection conn) 
     {

@@ -28,10 +28,10 @@ public class Calendar implements Serializable {
     public Category getCategory() { return category; }
     public void setCategory(Category category) { this.category = category; }
     
-    public boolean createCalendar(Calendar cal,Connection conn) 
+    public boolean createCalendar(Connection conn) 
     {
     		CalendarDAO dao = new CalendarDAO(conn);
-        return dao.create(cal);
+        return dao.create(this);
     }
     
     

@@ -152,6 +152,12 @@ public class TreasurerDAO extends DAO<Treasurer> {
     // =====================================================================
     // 5. Créditer les membres sélectionnés
     // =====================================================================
+    /* 
+       results[] 	Filtré 	Return 	Signification
+	   [1, 1, 1]		 3		  3       3 membres payés
+	   [1, 0, 1]		 2		  2		  2/3 membres payés
+	   [0, 0, 0]		 0		  0	      Aucun payé
+     											*/
     public int confirmPassengerPayments(int rideId, List<Integer> memberIds) {
         if (memberIds == null || memberIds.isEmpty()) return 0;
 

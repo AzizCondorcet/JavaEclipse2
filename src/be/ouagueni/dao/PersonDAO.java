@@ -48,6 +48,7 @@ public class PersonDAO extends DAO<Person> {
 	}
 	
 	public Person find(String name, String password) {
+		System.out.println("DEBUG LOGIN → name = [" + name + "], password = [" + password + "]");
 	    try {
 	        String sqlPerson = "SELECT * FROM Person WHERE namesPers = ? AND psw = ?";
 	        PreparedStatement psPerson = this.connect.prepareStatement(sqlPerson);

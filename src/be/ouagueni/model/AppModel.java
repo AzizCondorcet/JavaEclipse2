@@ -72,15 +72,14 @@ public class AppModel {
             
             // ✅ 2. Le Calendar est déjà créé avec la Category
             Calendar calendar = category.getCalendar();
-            if (calendar.getid() == 0) { // Si pas encore persisté
-                if (!calendar.createCalendar(calendar, conn)) {
-                    return false;
-                }
+            if (!calendar.createCalendar(conn)) 
+            {
+                return false;
             }
             
             // ✅ 3. Créer la Ride
             Ride ride = new Ride(0, lieu, dateDepart, prix, calendar);
-            boolean ok = ride.createRide(ride, conn);
+            boolean ok = ride.createRide(conn);
             
             return ok;
             
@@ -550,5 +549,43 @@ public class AppModel {
             return null;
         }
     }
+	    
+	 // ===================================================================
+	 // ==================== LOGIQUE STATUS BALADES ======================
+	 // ===================================================================
+	
+	 /*
+	  * Si une balade est terminée (passée)
+	  */
+	 public boolean isRideTerminee(Ride ride) {
+	     return ride != null && 
+	            ride.getStartDate() != null && 
+	            ride.getStartDate().isBefore(LocalDateTime.now());
+	 }
+	
+	 /*
+	  * statut affiché d'une balade
+	  */
+	 public String getRideStatus(Ride ride) {
+	     if (ride == null) return "Balade inconnue";
+	     
+	     return isRideTerminee(ride) 
+	         ? "Balade terminée" 
+	         : "Balade à venir";
+	 }
+	 
+	 /*
+	  * Retourne les rides du manager triées (terminées en bas)
+	  */
+	 public List<Ride> getRidesDuManagerAvecStatus(Manager manager) {
+	     return getRidesDuManager(manager).stream()
+	         .sorted((r1, r2) -> {
+	             boolean t1 = isRideTerminee(r1);
+	             boolean t2 = isRideTerminee(r2);
+	             if (t1 != t2) return t1 ? 1 : -1; // À venir EN PREMIER
+	             return r1.getStartDate().compareTo(r2.getStartDate());
+	         })
+	         .toList();
+	 }
     
 }

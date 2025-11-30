@@ -32,32 +32,28 @@ public class BikeDialog extends JDialog {
 
         JButton btnSave = new JButton("Enregistrer");
         btnSave.addActionListener(e -> {
-            try {
-                TypeCat type = (TypeCat) comboType.getSelectedItem();
-                double poids = Double.parseDouble(txtPoids.getText().replace(',', '.'));
-                double longueur = Double.parseDouble(txtLongueur.getText().replace(',', '.'));
+	    try {
+	        TypeCat type = (TypeCat) comboType.getSelectedItem();
+	        double poids = Double.parseDouble(txtPoids.getText().replace(',', '.'));
+	        double longueur = Double.parseDouble(txtLongueur.getText().replace(',', '.'));
 
-                Bike bike = bikeToEdit != null ? bikeToEdit : new Bike();
-                bike.setType(type);
-                bike.setWeight(poids);
-                bike.setLength(longueur);
-                bike.setOwner(member);
-
-                boolean success = bikeToEdit == null ? bike.create(AppModel.getInstance().getConnection())
-                                                    : bike.update(AppModel.getInstance().getConnection());
-
-                if (success) {
-                    if (bikeToEdit == null) member.getBikes().add(bike);
-                    JOptionPane.showMessageDialog(this, "Vélo enregistré !");
-                    dispose();
-                    onSave.run();
-                }
-                else {
-					JOptionPane.showMessageDialog(this, "Échec de l'enregistrement du vélo.Vélo possiblement déjà présent sur le trajet", "Erreur", JOptionPane.ERROR_MESSAGE);
-				}
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Données invalides.", "Erreur", JOptionPane.ERROR_MESSAGE);
-            }
+	        Bike bike = bikeToEdit != null ? bikeToEdit : new Bike(0,poids, type, longueur, member);
+	        
+	        boolean success = bikeToEdit == null ? bike.create(AppModel.getInstance().getConnection())
+	                                            : bike.update(AppModel.getInstance().getConnection());
+	
+	        if (success) {
+	            if (bikeToEdit == null) member.getBikes().add(bike);
+	            JOptionPane.showMessageDialog(this, "Vélo enregistré !");
+	            dispose();
+	            onSave.run();
+	        }
+	        else {
+	            JOptionPane.showMessageDialog(this, "Échec de l'enregistrement du vélo. Vélo possiblement déjà présent sur le trajet", "Erreur", JOptionPane.ERROR_MESSAGE);
+	        }
+	    } catch (Exception ex) {
+	        JOptionPane.showMessageDialog(this, "Données invalides.", "Erreur", JOptionPane.ERROR_MESSAGE);
+	    }
         });
 
         JPanel south = new JPanel();

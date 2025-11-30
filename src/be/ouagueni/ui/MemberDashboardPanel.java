@@ -46,14 +46,12 @@ public class MemberDashboardPanel extends JPanel {
 
         btnDisponibilite = new JButton("Poster mes disponibilités");
         btnReserver = new JButton("Réserver une balade");
-        JButton btnChoisirCategorie = new JButton("Choisir une catégorie");
         JButton btnPayerCotisation = new JButton("Payer cotisation");
         JButton btnAjouterFonds = new JButton("Ajouter fonds");
 
         topButtons.setBorder(BorderFactory.createEmptyBorder(15, 0, 15, 0));
         topButtons.add(btnDisponibilite);
         topButtons.add(btnReserver);
-        topButtons.add(btnChoisirCategorie);
         topButtons.add(btnPayerCotisation);
         topButtons.add(btnAjouterFonds);
 
@@ -75,7 +73,6 @@ public class MemberDashboardPanel extends JPanel {
         // Actions (inchangées)
         btnDisponibilite.addActionListener(this::ouvrirDisponibilite);
         btnReserver.addActionListener(this::ouvrirReservation);
-        btnChoisirCategorie.addActionListener(e -> choisirCategorie());
         btnPayerCotisation.addActionListener(e -> payerCotisation());
         btnAjouterFonds.addActionListener(e -> ajouterFonds());
     }
@@ -170,35 +167,6 @@ public class MemberDashboardPanel extends JPanel {
         refreshRulesPanel();  
         
         return rulesPanel; 
-    }
-    
-    private void choisirCategorie() {
-        List<Category> disponibles = model.getCategoriesDisponiblesPourMembre(currentMember);
-        if (disponibles.isEmpty()) {
-            JOptionPane.showMessageDialog(this, "Vous possédez déjà toutes les catégories disponibles !", "Information", JOptionPane.INFORMATION_MESSAGE);
-            return;
-        }
-
-        JComboBox<Category> combo = new JComboBox<>(disponibles.toArray(new Category[0]));
-        combo.setRenderer(new DefaultListCellRenderer() {
-            @Override
-            public Component getListCellRendererComponent(JList<?> list, Object value, int index, boolean isSelected, boolean cellHasFocus) {
-                super.getListCellRendererComponent(list, value, index, isSelected, cellHasFocus);
-                if (value instanceof Category c) setText(c.getNomCategorie().toString());
-                return this;
-            }
-        });
-
-        int choix = JOptionPane.showConfirmDialog(this, combo, "Choisir une nouvelle catégorie", JOptionPane.OK_CANCEL_OPTION, JOptionPane.QUESTION_MESSAGE);
-        if (choix == JOptionPane.OK_OPTION) {
-            Category selected = (Category) combo.getSelectedItem();
-            boolean success = model.ajouterCategorieAuMembre(currentMember, selected);
-            JOptionPane.showMessageDialog(this,
-                    success ? "Catégorie ajoutée avec succès !" : "Erreur lors de l'ajout.",
-                    success ? "Succès" : "Erreur",
-                    success ? JOptionPane.INFORMATION_MESSAGE : JOptionPane.ERROR_MESSAGE);
-            refreshAll();
-        }
     }
 
     private void ouvrirDisponibilite(ActionEvent e) {

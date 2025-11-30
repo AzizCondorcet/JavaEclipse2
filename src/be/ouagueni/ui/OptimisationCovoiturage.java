@@ -4,8 +4,7 @@ import be.ouagueni.model.*;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class OptimisationCovoiturage
-{
+public class OptimisationCovoiturage {
 
     public static class ResultatOptimisation {
         private final Map<Vehicule, List<Member>> affectationPassagers = new HashMap<>();
@@ -32,18 +31,12 @@ public class OptimisationCovoiturage
     }
 
     /**
-     * Optimise le covoiturage avec la stratégie First-Fit Decreasing (FFD)
+     * Optimisation First-Fit Decreasing (tri par capacité totale décroissante)
      */
     public static ResultatOptimisation optimiser(Ride ride) {
         ResultatOptimisation resultat = new ResultatOptimisation();
 
-        // 1. DONNÉES DE BASE — grâce à Ride, c’est magique
-        int besoinPassagers = ride.getNeededSeatNumber();
-        int besoinVelos     = ride.getNeededBikeSpotNumber();
-        int offrePassagers  = ride.getAvailableSeatNumber();
-        int offreVelos      = ride.getAvailableBikeSpotNumber();
-
-        // 2. Véhicules disponibles (avec conducteur)
+        // 1. Véhicules avec conducteur, triés par capacité totale décroissante
         List<Vehicule> vehicules = ride.getVehicles().stream()
                 .filter(v -> v.getDriver() != null)
                 .sorted((v1, v2) -> Integer.compare(
@@ -51,36 +44,40 @@ public class OptimisationCovoiturage
                         v1.getSeatNumber() + v1.getBikeSpotNumber()))
                 .toList();
 
-        // Réinitialisation
-        vehicules.forEach(v -> {
+        // Initialisation des affectations
+        for (Vehicule v : vehicules) {
             resultat.getAffectationPassagers().put(v, new ArrayList<>());
             resultat.getAffectationVelos().put(v, new ArrayList<>());
             v.getPassengers().clear();
             v.getBikes().clear();
-        });
+        }
 
-        // 3. AFFECTATION PASSAGERS
+        // 2. Passagers à placer (exclure les conducteurs)
         List<Member> passagers = ride.getInscriptions().stream()
                 .filter(Inscription::isPassenger)
                 .map(Inscription::getMember)
                 .filter(Objects::nonNull)
+                .filter(m -> vehicules.stream().noneMatch(v -> v.getDriver().equals(m))) // pas conducteur
                 .toList();
 
+        // Placement des passagers (First-Fit)
         for (Member p : passagers) {
             boolean placeTrouvee = false;
             for (Vehicule v : vehicules) {
-                if (v.getDriver().equals(p)) continue; // ne peut pas être passager chez soi
-                if (resultat.getAffectationPassagers().get(v).size() < v.getSeatNumber()) {
-                    resultat.getAffectationPassagers().get(v).add(p);
+                if (v.getDriver().equals(p)) continue;
+                if (v.getPassengers().size() < v.getSeatNumber() - 1) { // -1 = conducteur déjà dedans
                     v.getPassengers().add(p);
+                    resultat.getAffectationPassagers().get(v).add(p);
                     placeTrouvee = true;
                     break;
                 }
             }
-            if (!placeTrouvee) resultat.getPassagersNonAffectes().add(p);
+            if (!placeTrouvee) {
+                resultat.getPassagersNonAffectes().add(p);
+            }
         }
 
-        // 4. AFFECTATION VÉLOS
+        // 3. Vélos à placer
         List<Bike> velos = ride.getInscriptions().stream()
                 .filter(Inscription::isBike)
                 .map(Inscription::getBikeObj)
@@ -90,21 +87,26 @@ public class OptimisationCovoiturage
         for (Bike velo : velos) {
             boolean placeTrouvee = false;
             for (Vehicule v : vehicules) {
-                if (resultat.getAffectationVelos().get(v).size() < v.getBikeSpotNumber()) {
-                    resultat.getAffectationVelos().get(v).add(velo);
+                if (v.getBikes().size() < v.getBikeSpotNumber()) {
                     v.getBikes().add(velo);
+                    resultat.getAffectationVelos().get(v).add(velo);
                     placeTrouvee = true;
                     break;
                 }
             }
-            if (!placeTrouvee) resultat.getVelosNonAffectes().add(velo);
+            if (!placeTrouvee) {
+                resultat.getVelosNonAffectes().add(velo);
+            }
         }
 
-        // 5. Résultats finaux
+        // 4. Statistiques finales
         int vehiculesUtilises = (int) vehicules.stream()
                 .filter(v -> !v.getPassengers().isEmpty() || !v.getBikes().isEmpty())
                 .count();
         resultat.setNombreVehiculesUtilises(vehiculesUtilises);
+
+        int passagersPlaces = passagers.size() - resultat.getPassagersNonAffectes().size();
+        int velosPlaces = velos.size() - resultat.getVelosNonAffectes().size();
 
         boolean succes = resultat.getPassagersNonAffectes().isEmpty() && resultat.getVelosNonAffectes().isEmpty();
         resultat.setOptimisationReussie(succes);
@@ -112,38 +114,42 @@ public class OptimisationCovoiturage
         String msg = String.format(
             "Optimisation terminée : %d véhicule(s) utilisé(s)\n" +
             "Passagers : %d/%d placés\n" +
-            "Vélos     : %d/%d placés%s%s",
+            "Vélos     : %d/%d placés",
             vehiculesUtilises,
-            besoinPassagers - resultat.getPassagersNonAffectes().size(), besoinPassagers,
-            besoinVelos - resultat.getVelosNonAffectes().size(), besoinVelos,
-            resultat.getPassagersNonAffectes().isEmpty() ? "" : "\nPassagers non placés",
-            resultat.getVelosNonAffectes().isEmpty() ? "" : "\nVélos non placés"
+            passagersPlaces, passagers.size(),
+            velosPlaces, velos.size()
         );
         resultat.setMessageResultat(msg);
 
         return resultat;
     }
 
+
     public static List<String> suggererAmeliorations(Ride ride, ResultatOptimisation resultat) {
         List<String> suggestions = new ArrayList<>();
 
-        int manqueP = ride.getNeededSeatNumber() - ride.getAvailableSeatNumber();
-        int manqueV = ride.getNeededBikeSpotNumber() - ride.getAvailableBikeSpotNumber();
+        int passagersManquants = resultat.getPassagersNonAffectes().size();
+        int velosManquants = resultat.getVelosNonAffectes().size();
 
-        if (manqueP > 0) {
-            suggestions.add(String.format("Il manque %d place(s) passager → recrutez des conducteurs !", manqueP));
+        if (passagersManquants > 0) {
+            suggestions.add(String.format("Il manque %d place(s) passager → recrutez des conducteurs !", passagersManquants));
         }
-        if (manqueV > 0) {
-            suggestions.add(String.format("Il manque %d place(s) vélo → cherchez des porte-vélos !", manqueV));
+        if (velosManquants > 0) {
+            suggestions.add(String.format("Il manque %d place(s) vélo → cherchez des porte-vélos !", velosManquants));
         }
 
+        // Véhicules très peu remplis → suggestion de regroupement
         long vehiculesSousUtilises = ride.getVehicles().stream()
                 .filter(v -> v.getDriver() != null)
-                .filter(v -> v.getPassengers().size() + v.getBikes().size() < (v.getSeatNumber() + v.getBikeSpotNumber()) * 0.5)
+                .filter(v -> {
+                    int placesUtilisees = v.getPassengers().size() + v.getBikes().size();
+                    int capaciteReelle = (v.getSeatNumber() - 1) + v.getBikeSpotNumber(); // conducteur prend 1 place
+                    return capaciteReelle >= 3 && placesUtilisees <= 1; // ex: 5 places → max 1 passager/vélo
+                })
                 .count();
 
         if (vehiculesSousUtilises > 1) {
-            suggestions.add(String.format("%d véhicule(s) sont peu remplis → envisagez de réduire le nombre de conducteurs.", vehiculesSousUtilises));
+            suggestions.add(String.format("%d véhicule(s) sont très peu remplis → essayez de regrouper les participants.", vehiculesSousUtilises));
         }
 
         return suggestions;
@@ -154,33 +160,43 @@ public class OptimisationCovoiturage
         r.append("═══════════════════════════════════════════════════\n");
         r.append("   RAPPORT D'OPTIMISATION COVOITURAGE\n");
         r.append("═══════════════════════════════════════════════════\n\n");
-        r.append("Balade : ").append(ride.getStartPlace()).append(" - ")
-         .append(ride.getStartDate().toLocalDate()).append("\n\n");
+        r.append("Balade : ").append(ride.getStartPlace())
+         .append(" - ").append(ride.getStartDate().toLocalDate()).append("\n\n");
 
         r.append(resultat.getMessageResultat()).append("\n\n");
         r.append("Détail par véhicule :\n");
         r.append("───────────────────────────────────────────────────\n");
 
-        for (Vehicule v : ride.getVehicles()) {
-            if (v.getDriver() == null) continue;
-            var passagers = resultat.getAffectationPassagers().getOrDefault(v, List.of());
-            var velos = resultat.getAffectationVelos().getOrDefault(v, List.of());
+        List<Vehicule> vehiculesTries = ride.getVehicles().stream()
+                .filter(v -> v.getDriver() != null)
+                .sorted(Comparator.comparingInt(v -> - (v.getSeatNumber() + v.getBikeSpotNumber())))
+                .toList();
 
-            r.append(String.format(" Conducteur: %s %s\n",
-                    v.getDriver().getFirstname(), v.getDriver().getName()));
-            r.append(String.format("   Passagers (%d/%d): %s\n",
-                    passagers.size(), v.getSeatNumber(),
-                    passagers.isEmpty() ? "Aucun" : passagers.stream().map(Member::getFirstname).collect(Collectors.joining(", "))));
-            r.append(String.format("   Vélos (%d/%d): %s\n\n",
+        for (Vehicule v : vehiculesTries) {
+            List<Member> passagers = resultat.getAffectationPassagers().getOrDefault(v, List.of());
+            List<Bike> velos = resultat.getAffectationVelos().getOrDefault(v, List.of());
+
+            r.append(String.format("Conducteur : %s %s\n",
+                    v.getDriver().getFirstname(), v.getDriver().getName().toUpperCase()));
+            r.append(String.format("   Passagers (%d/%d) : %s\n",
+                    passagers.size(), v.getSeatNumber() - 1,
+                    passagers.isEmpty() ? "Aucun" : passagers.stream()
+                            .map(m -> m.getFirstname())
+                            .collect(Collectors.joining(", "))));
+            r.append(String.format("   Vélos (%d/%d) : %s\n\n",
                     velos.size(), v.getBikeSpotNumber(),
-                    velos.isEmpty() ? "Aucun" : velos.stream().map(b -> "#" + b.getId()).collect(Collectors.joining(", "))));
+                    velos.isEmpty() ? "Aucun" : velos.stream()
+                            .map(b -> "#" + b.getId())
+                            .collect(Collectors.joining(", "))));
         }
 
         var suggestions = suggererAmeliorations(ride, resultat);
         if (!suggestions.isEmpty()) {
             r.append("Suggestions :\n");
             r.append("───────────────────────────────────────────────────\n");
-            suggestions.forEach(s -> r.append(" ").append(s).append("\n"));
+            suggestions.forEach(s -> r.append(" • ").append(s).append("\n"));
+        } else {
+            r.append("Aucune suggestion — tout est optimisé !\n");
         }
 
         return r.toString();

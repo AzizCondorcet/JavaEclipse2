@@ -1,29 +1,32 @@
 package be.ouagueni.model;
 
 import java.io.Serializable;
+import java.sql.Connection;
+import java.sql.SQLException;
 import java.util.HashSet;
 import java.util.Set;
 
-public class Vehicle implements Serializable {
+import be.ouagueni.dao.VehiculeDAO;
+
+public class Vehicule implements Serializable {
     private static final long serialVersionUID = 6135289786991520925L;
     private int id;
     private int seatNumber;
     private int bikeSpotNumber;
-    private Set<Member> passengers = new HashSet<>(); // 1..* : au moins 1 passager
-    private Member driver; // 1 : exactement 1 conducteur (pas un Set!)
-    private Set<Bike> bikes = new HashSet<>(); // 0..* : peut être vide
-    private Set<Ride> rides = new HashSet<>(); // 1..* : au moins 1 ride
+    private Set<Member> passengers = new HashSet<>(); 
+    private Member driver;
+    private Set<Bike> bikes = new HashSet<>(); 
+    private Set<Ride> rides = new HashSet<>(); 
 
-    // Constructeurs
-    public Vehicle() {}
+    public Vehicule() {}
     
-    public Vehicle(int id, int seatNumber, int bikeSpotNumber) {
+    public Vehicule(int id, int seatNumber, int bikeSpotNumber) {
         this.id = id; 
         this.seatNumber = seatNumber; 
         this.bikeSpotNumber = bikeSpotNumber;
     }
     
-    public Vehicle(int id, int seatNumber, int bikeSpotNumber, Member driver, Member passenger, Ride ride) {
+    public Vehicule(int id, int seatNumber, int bikeSpotNumber, Member driver, Member passenger, Ride ride) {
         this.id = id;
         this.seatNumber = seatNumber;
         this.bikeSpotNumber = bikeSpotNumber;
@@ -43,7 +46,14 @@ public class Vehicle implements Serializable {
         this.rides.add(ride);
     }
 
-    public int getId() { 
+    public Vehicule(int seatNumber2, int bikeSpotNumber2, Member member)
+    {
+    		seatNumber = seatNumber2;
+    		bikeSpotNumber = bikeSpotNumber2;
+    		driver = member;
+	}
+
+	public int getId() { 
         return id; 
     }
     
@@ -146,6 +156,72 @@ public class Vehicle implements Serializable {
             throw new IllegalStateException("Un véhicule doit avoir au moins 1 ride");
         }
         rides.remove(ride); 
+    }
+    public boolean create(Connection conn) {
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        return dao.create(this);
+    }
+    public int getAvailableSeatNumber() {
+        long used = getPassengers().size();
+        return seatNumber - (int) used;
+    }
+
+    public int getAvailableBikeSpotNumber(Ride ride) {
+        if (ride == null) return bikeSpotNumber;
+
+        long usedBikes = getPassengers().stream()
+                .filter(passenger -> passenger != null)
+                .flatMap(passenger -> passenger.getInscriptions().stream())
+                .filter(ins -> ins.getRide() != null && ins.getRide().equals(ride))
+                .filter(Inscription::isBike)
+                .count();
+
+        return bikeSpotNumber - (int) usedBikes;
+    }
+  
+    public boolean update(Connection conn) throws SQLException {
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        return dao.update(this);
+    }
+    
+    public boolean save(Connection conn) throws SQLException {
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        return dao.save(this); 
+    }
+
+    public static Vehicule getOrCreateForDriver(Member driver, Connection conn) throws SQLException {
+        if (driver == null || driver.getIdMember() <= 0) {
+            return null;
+        }
+
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        Vehicule v = dao.findByDriverId(driver.getIdMember());
+
+        if (v != null) {
+            v.setDriver(driver);
+            return v;
+        }
+
+        return null;
+    }
+    
+    public Vehicule findByDriverId(int id,Connection conn) throws SQLException {
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        return dao.findByDriverId(id); 
+    }
+    
+    public static Vehicule ensureVehicleExists(Member driver, Connection conn) throws SQLException {
+    		Vehicule v = getOrCreateForDriver(driver, conn); 
+        if (v != null) {
+            return v;
+        }
+
+        Vehicule newVehicle = new Vehicule(1, 0, driver);
+        VehiculeDAO dao = new VehiculeDAO(conn);
+        if (dao.create(newVehicle)) {
+            return newVehicle;
+        }
+        throw new SQLException("Échec de la création du véhicule");
     }
     
 }

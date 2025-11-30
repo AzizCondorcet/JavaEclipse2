@@ -2,6 +2,7 @@ package be.ouagueni.dao;
 
 import java.sql.Connection;
 
+
 public abstract class DAO<T> {
     protected Connection connect = null;
 

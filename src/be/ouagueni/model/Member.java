@@ -1,20 +1,28 @@
 package be.ouagueni.model;
 
 import java.io.Serializable;
+import java.sql.Connection;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
+
+import be.ouagueni.dao.MemberDAO;
 
 public class Member extends Person implements Serializable {
 
 	private static final long serialVersionUID = -25458080844517046L;
 	private double balance;
+	private int idMember;
     private Set<Inscription> inscriptions = new HashSet<>();
     private Set<Category> categories = new HashSet<>(); 
     private Set<Bike> bikes = new HashSet<>(); 
-    private Vehicle driver;
-    private Set<Vehicle> passengers = new HashSet<>(); 
+    private Vehicule driver;
+    private Set<Vehicule> passengers = new HashSet<>(); 
 
     public Member() { super(); }
+    public Member(String name, String firstname) {
+        super(0, name, null, null, firstname);
+    }
     public Member(int id, String name, String firstname, String tel, String password,
             Category category, Bike bike) {
 	  super(id, name, firstname, tel, password);
@@ -27,7 +35,8 @@ public class Member extends Person implements Serializable {
 
     public double getBalance() { return balance; }
     public void setBalance(double balance) { this.balance = balance; }
-
+	public int getIdMember() { return idMember; }
+	public void setIdMember(int idMember) { this.idMember = idMember; }
     public Set<Inscription> getInscriptions() { return inscriptions; }
     public void setInscriptions(Set<Inscription> inscriptions) { this.inscriptions = inscriptions; }
     public void addInscription(Inscription ins) { if (ins != null) this.inscriptions.add(ins); }
@@ -60,22 +69,54 @@ public class Member extends Person implements Serializable {
         if (this.bikes.size() <= 1) {
             throw new IllegalStateException("Un membre doit avoir au moins 1 vélo");}this.bikes.remove(bike); }
     
-    public Vehicle getDriver() {return driver;}
+    public Vehicule getDriver() {return driver;}
     
-    public void setDriver(Vehicle driver) {this.driver = driver;}
+    public void setDriver(Vehicule driver) {this.driver = driver;}
     
-    public Set<Vehicle> getPassengers() { return passengers; }
+    public Set<Vehicule> getPassengers() { return passengers; }
     
-    public void setPassengers(Set<Vehicle> passengers) { 
+    public void setPassengers(Set<Vehicule> passengers) { 
         if (passengers == null) {this.passengers = new HashSet<>();} else {this.passengers = passengers; }}
     
-    public void addPassenger(Vehicle vehicle) { if (vehicle != null) {this.passengers.add(vehicle);}}
+    public void addPassenger(Vehicule vehicle) { if (vehicle != null) {this.passengers.add(vehicle);}}
     
-    public void removePassenger(Vehicle vehicle) { this.passengers.remove(vehicle); }
+    public void removePassenger(Vehicule vehicle) { this.passengers.remove(vehicle); }
     
-    public boolean isPassengerIn(Vehicle vehicle) {return this.passengers.contains(vehicle);}
+    public boolean isPassengerIn(Vehicule vehicle) {return this.passengers.contains(vehicle);}
 
-    // méthodes métier de ton diagramme
-    public double calculateBalance() { return balance; /* TODO: calcul réel */ }
-    public boolean checkBalance() { return balance >= 0; }
+    public double calculateBalance() {
+        Set<TypeCat> uniqueTypes = getBikes().stream()
+                .map(Bike::getType)
+                .collect(Collectors.toSet());
+        int categoryCount = uniqueTypes.size();
+        double total = 20.0 + 5.0 * Math.max(0, categoryCount);
+        return Math.round(total * 100.0) / 100.0;
+    }
+    public boolean checkBalance() {
+        return this.balance <= 0.0;
+    }
+    public boolean create(Connection conn) 
+    {
+    		MemberDAO dao = new MemberDAO(conn);
+    		return dao.create(this);
+    }
+    
+    public boolean update(Connection conn) 
+    {
+    		MemberDAO dao = new MemberDAO(conn);
+    		return dao.update(this);
+    }
+    
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Member member = (Member) o;
+        return idMember == member.idMember;
+    }
+
+    @Override
+    public int hashCode() {
+        return Integer.hashCode(idMember);
+    }
 }

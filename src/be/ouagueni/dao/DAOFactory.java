@@ -8,7 +8,7 @@ import be.ouagueni.model.Category;
 import be.ouagueni.model.Inscription;
 import be.ouagueni.model.Member;
 import be.ouagueni.model.Ride;
-import be.ouagueni.model.Vehicle;
+import be.ouagueni.model.Vehicule;
 
 public class DAOFactory extends AbstractDAOFactory {
     protected static final Connection conn = ClubConnection.getInstance();
@@ -24,8 +24,8 @@ public class DAOFactory extends AbstractDAOFactory {
     }
 
     @Override
-    public DAO<Vehicle> getVehicleDAO() { 
-        return new VehicleDAO(conn); 
+    public DAO<Vehicule> getVehicleDAO() { 
+        return new VehiculeDAO(conn); 
     }
 
     @Override

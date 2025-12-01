@@ -12,6 +12,7 @@ public class Calendar implements Serializable {
     private Category category;
 
     public Calendar() {}
+    
     public Calendar(Category category) {
         this.id = 0;           
         this.category = category;
@@ -22,7 +23,6 @@ public class Calendar implements Serializable {
         this.category = category;
     }
 
-    
     public int getid() { return id; }
     public void setid(int id) { this.id = id; }
     public Category getCategory() { return category; }
@@ -33,7 +33,5 @@ public class Calendar implements Serializable {
     		CalendarDAO dao = new CalendarDAO(conn);
         return dao.create(this);
     }
-    
-    
 }
 
